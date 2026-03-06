@@ -1,7 +1,6 @@
 """pf-scout set-context — fetch your own PF Context document."""
 import hashlib
 import json
-import os
 from pathlib import Path
 from datetime import datetime, timezone
 

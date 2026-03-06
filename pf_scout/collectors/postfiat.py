@@ -7,8 +7,6 @@ A new signal is only created when the document changes.
 import hashlib
 import re
 import time
-from typing import Optional
-
 import requests
 
 from .base import BaseCollector, CollectedSignal

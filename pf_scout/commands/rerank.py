@@ -2,8 +2,6 @@
 import json
 import re
 from pathlib import Path
-from datetime import datetime, timezone
-
 import click
 import yaml
 
@@ -60,13 +58,11 @@ def rerank_cmd(ctx, rubric_path, fmt, snapshot, tier):
     conn = get_connection(db_path)
 
     # Load rubric if provided
-    tiers_config = {}
     rubric_name = "none"
     if rubric_path:
         with open(rubric_path) as f:
             rubric = yaml.safe_load(f)
         rubric_name = rubric.get("name", rubric_path)
-        tiers_config = rubric.get("tiers", {})
 
     # Get all active contacts with latest snapshot + latest postfiat/context signal
     rows = conn.execute("""
@@ -124,7 +120,6 @@ def rerank_cmd(ctx, rubric_path, fmt, snapshot, tier):
         })
 
     # Output
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     if fmt == "md":
         click.echo(f"\nRERANK — {rubric_name} | Your context: {context_version} | {len(results)} contacts\n")
         click.echo(f"{'Rank':<5} {'Contact':<22} {'Tier':<14} {'Score':<7} {'Context Alignment'}")
