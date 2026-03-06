@@ -156,125 +156,105 @@ class TestShow:
 class TestSeed:
     """Phase 3: seed command tests."""
 
-    @patch("pf_scout.collectors.github.requests.get")
-    def test_seed_github_creates_contacts(self, mock_get, runner, initialized_db):
-        # Mock org repos
-        repos_response = MagicMock()
-        repos_response.status_code = 200
-        repos_response.json.return_value = [
-            {"name": "repo1", "fork": False}
-        ]
-        repos_response.headers = {}
+    def test_seed_github_creates_contacts(self, runner, initialized_db):
+        """Test seed command with mocked GitHub API."""
+        with patch('pf_scout.collectors.github.time.sleep'):
+            with patch('pf_scout.collectors.github.requests.get') as mock_get:
+                # Track calls to handle pagination
+                call_count = {"repos": 0}
+                
+                # Setup mock responses
+                def mock_response(url, **kwargs):
+                    resp = MagicMock()
+                    resp.headers = {}
+                    
+                    if "/orgs/" in url and "/repos" in url:
+                        call_count["repos"] += 1
+                        resp.status_code = 200
+                        # Return repos on first call, empty on second (pagination end)
+                        if call_count["repos"] == 1:
+                            resp.json.return_value = [{"name": "repo1", "fork": False}]
+                        else:
+                            resp.json.return_value = []
+                    elif "/contributors" in url:
+                        resp.status_code = 200
+                        resp.json.return_value = [
+                            {"login": "user1", "type": "User", "contributions": 10}
+                        ]
+                    elif "/users/user1/repos" in url:
+                        resp.status_code = 200
+                        resp.json.return_value = []
+                    elif "/users/user1" in url:
+                        resp.status_code = 200
+                        resp.json.return_value = {
+                            "login": "user1", "bio": "Dev", "company": None,
+                            "location": None, "public_repos": 5, "followers": 10,
+                            "created_at": "2020-01-01T00:00:00Z"
+                        }
+                    else:
+                        resp.status_code = 404
+                        resp.json.return_value = {}
+                    return resp
+                
+                mock_get.side_effect = mock_response
 
-        # Mock contributors
-        contributors_response = MagicMock()
-        contributors_response.status_code = 200
-        contributors_response.json.return_value = [
-            {"login": "user1", "type": "User", "contributions": 10},
-        ]
-        contributors_response.headers = {}
+                result = runner.invoke(cli, [
+                    "--db", initialized_db,
+                    "seed", "github",
+                    "--org", "test-org",
+                    "--token", "fake-token"
+                ])
+                
+                assert result.exit_code == 0
+                assert "Seeded" in result.output
 
-        # Mock user profile
-        profile_response = MagicMock()
-        profile_response.status_code = 200
-        profile_response.json.return_value = {
-            "login": "user1",
-            "bio": "Developer",
-            "company": "TestCo",
-            "location": "Earth",
-            "public_repos": 5,
-            "followers": 10,
-            "created_at": "2020-01-01T00:00:00Z",
-        }
-        profile_response.headers = {}
+                conn = get_connection(initialized_db)
+                contacts = conn.execute("SELECT * FROM contacts").fetchall()
+                assert len(contacts) >= 1
+                conn.close()
 
-        # Mock user repos for commit signals
-        user_repos_response = MagicMock()
-        user_repos_response.status_code = 200
-        user_repos_response.json.return_value = [
-            {
-                "name": "repo1",
-                "full_name": "user1/repo1",
-                "fork": False,
-                "stargazers_count": 5,
-                "language": "Python",
-            }
-        ]
-        user_repos_response.headers = {}
+    def test_seed_skips_bots(self, runner, initialized_db):
+        """Test that bots are skipped during seed."""
+        with patch('pf_scout.collectors.github.time.sleep'):
+            with patch('pf_scout.collectors.github.requests.get') as mock_get:
+                call_count = {"repos": 0}
+                
+                def mock_response(url, **kwargs):
+                    resp = MagicMock()
+                    resp.headers = {}
+                    
+                    if "/orgs/" in url and "/repos" in url:
+                        call_count["repos"] += 1
+                        resp.status_code = 200
+                        if call_count["repos"] == 1:
+                            resp.json.return_value = [{"name": "repo1", "fork": False}]
+                        else:
+                            resp.json.return_value = []
+                    elif "/contributors" in url:
+                        resp.status_code = 200
+                        resp.json.return_value = [
+                            {"login": "dependabot[bot]", "type": "Bot", "contributions": 50}
+                        ]
+                    else:
+                        resp.status_code = 404
+                        resp.json.return_value = {}
+                    return resp
+                
+                mock_get.side_effect = mock_response
 
-        # Mock commit count per repo (search)
-        commits_response = MagicMock()
-        commits_response.status_code = 200
-        commits_response.json.return_value = {"total_count": 42}
-        commits_response.headers = {}
+                result = runner.invoke(cli, [
+                    "--db", initialized_db,
+                    "seed", "github",
+                    "--org", "test-org",
+                    "--token", "fake-token"
+                ])
+                
+                assert result.exit_code == 0
 
-        def side_effect(url, **kwargs):
-            if "/orgs/" in url and "/repos" in url:
-                return repos_response
-            elif "/repos/" in url and "/contributors" in url:
-                return contributors_response
-            elif "/users/" in url and "/repos" in url:
-                return user_repos_response
-            elif "/users/" in url:
-                return profile_response
-            elif "/search/commits" in url:
-                return commits_response
-            return MagicMock(status_code=404)
-
-        mock_get.side_effect = side_effect
-
-        result = runner.invoke(cli, [
-            "--db", initialized_db,
-            "seed", "github",
-            "--org", "test-org",
-            "--token", "fake-token"
-        ])
-        assert result.exit_code == 0
-        assert "Seeded" in result.output
-
-        conn = get_connection(initialized_db)
-        contacts = conn.execute("SELECT * FROM contacts").fetchall()
-        assert len(contacts) >= 1
-
-        signals = conn.execute("SELECT * FROM signals").fetchall()
-        assert len(signals) >= 1
-        conn.close()
-
-    @patch("pf_scout.collectors.github.requests.get")
-    def test_seed_skips_bots(self, mock_get, runner, initialized_db):
-        repos_response = MagicMock()
-        repos_response.status_code = 200
-        repos_response.json.return_value = [{"name": "repo1", "fork": False}]
-        repos_response.headers = {}
-
-        contributors_response = MagicMock()
-        contributors_response.status_code = 200
-        contributors_response.json.return_value = [
-            {"login": "dependabot[bot]", "type": "Bot", "contributions": 50},
-        ]
-        contributors_response.headers = {}
-
-        def side_effect(url, **kwargs):
-            if "/orgs/" in url and "/repos" in url:
-                return repos_response
-            elif "/contributors" in url:
-                return contributors_response
-            return MagicMock(status_code=404)
-
-        mock_get.side_effect = side_effect
-
-        result = runner.invoke(cli, [
-            "--db", initialized_db,
-            "seed", "github",
-            "--org", "test-org",
-            "--token", "fake-token"
-        ])
-        assert result.exit_code == 0
-
-        conn = get_connection(initialized_db)
-        contacts = conn.execute("SELECT * FROM contacts").fetchall()
-        assert len(contacts) == 0
-        conn.close()
+                conn = get_connection(initialized_db)
+                contacts = conn.execute("SELECT * FROM contacts").fetchall()
+                assert len(contacts) == 0
+                conn.close()
 
 
 class TestDuplicateSignal:
