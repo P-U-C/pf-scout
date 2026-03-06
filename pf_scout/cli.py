@@ -6,6 +6,7 @@ from .commands.init import init_command
 from .commands.add import add_command
 from .commands.link import link_command
 from .commands.show import show_command
+from .commands.seed import seed_group
 
 DEFAULT_DB = os.path.expanduser("~/.pf-scout/contacts.db")
 
@@ -24,6 +25,7 @@ cli.add_command(init_command)
 cli.add_command(add_command)
 cli.add_command(link_command)
 cli.add_command(show_command)
+cli.add_command(seed_group)
 
 
 def main():
