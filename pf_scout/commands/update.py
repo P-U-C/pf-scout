@@ -109,7 +109,7 @@ def run_auto_scoring(conn, contact_id, rubric):
     now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # Get contact info
-    contact = conn.execute(
+    _contact = conn.execute(
         "SELECT * FROM contacts WHERE id = ?", (contact_id,)
     ).fetchone()
 
@@ -266,7 +266,7 @@ def run_scoring(conn, contact_id, rubric, batch=False):
     now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
     # Get contact info
-    contact = conn.execute(
+    _contact = conn.execute(
         "SELECT * FROM contacts WHERE id = ?", (contact_id,)
     ).fetchone()
 
@@ -477,7 +477,7 @@ def update_command(ctx, identifier, update_all, since, rubric_path, batch, auto,
                 raise click.ClickException(f"Identifier not found: {identifier}")
 
             contact_id = ident_row["contact_id"]
-            contact = conn.execute(
+            _contact = conn.execute(
                 "SELECT * FROM contacts WHERE id = ?", (contact_id,)
             ).fetchone()
 
