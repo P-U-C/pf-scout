@@ -3,7 +3,6 @@
 import csv
 import io
 import json
-from pathlib import Path
 
 import click
 import yaml
