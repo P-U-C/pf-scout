@@ -4,7 +4,6 @@ This module provides reusable scoring functions for evaluating contacts
 against rubric dimensions. Used by prospect, report, and other commands.
 """
 
-from typing import Any
 
 # ---------------------------------------------------------------------------
 # Default keyword sets for heuristic scoring
@@ -43,10 +42,10 @@ DEFAULT_DIMENSIONS = [
 
 def get_text_blob(row: dict) -> str:
     """Concatenate all text fields from a leaderboard row for keyword search.
-    
+
     Args:
         row: A leaderboard row dictionary with summary, capabilities, etc.
-    
+
     Returns:
         Lowercased concatenated text for keyword matching.
     """
@@ -68,11 +67,11 @@ def get_text_blob(row: dict) -> str:
 
 def apply_keyword_heuristics(text: str, keywords: list[str]) -> int:
     """Count keyword hits and convert to a 1-5 score.
-    
+
     Args:
         text: The lowercased text to search in.
         keywords: List of keywords to look for.
-    
+
     Returns:
         Score from 1-5 based on number of keyword matches.
     """
@@ -90,11 +89,11 @@ def apply_keyword_heuristics(text: str, keywords: list[str]) -> int:
 
 def count_keyword_hits(text: str, keywords: list[str]) -> int:
     """Count how many distinct keywords appear in text.
-    
+
     Args:
         text: The lowercased text to search in.
         keywords: List of keywords to look for.
-    
+
     Returns:
         Number of keyword matches.
     """
@@ -103,12 +102,12 @@ def count_keyword_hits(text: str, keywords: list[str]) -> int:
 
 def get_matching_keywords(text: str, keywords: list[str], limit: int = 5) -> list[str]:
     """Get list of matching keywords from text.
-    
+
     Args:
         text: The lowercased text to search in.
         keywords: List of keywords to look for.
         limit: Maximum number of matches to return.
-    
+
     Returns:
         List of matched keywords (up to limit).
     """
@@ -121,10 +120,10 @@ def get_matching_keywords(text: str, keywords: list[str], limit: int = 5) -> lis
 
 def score_technical_depth(row: dict) -> int:
     """Score technical depth (1-5) based on tech keywords and sybil score.
-    
+
     Args:
         row: Leaderboard row with capabilities, summary, sybil_score.
-    
+
     Returns:
         Score from 1-5.
     """
@@ -137,10 +136,10 @@ def score_technical_depth(row: dict) -> int:
 
 def score_forecasting(row: dict) -> int:
     """Score quantitative/forecasting potential (1-5).
-    
+
     Args:
         row: Leaderboard row with capabilities, alignment_score, monthly_rewards.
-    
+
     Returns:
         Score from 1-5.
     """
@@ -155,10 +154,10 @@ def score_forecasting(row: dict) -> int:
 
 def score_operational_reliability(row: dict) -> int:
     """Score operational reliability (1-5) based on leaderboard metrics.
-    
+
     Args:
         row: Leaderboard row with leaderboard_score_month, monthly_tasks, rewards.
-    
+
     Returns:
         Score from 1-5.
     """
@@ -186,10 +185,10 @@ def score_operational_reliability(row: dict) -> int:
 
 def score_engagement_consistency(row: dict) -> int:
     """Score engagement consistency (1-5) based on weekly activity.
-    
+
     Args:
         row: Leaderboard row with weekly_rewards, leaderboard_score_week.
-    
+
     Returns:
         Score from 1-5.
     """
@@ -227,37 +226,37 @@ SCORERS = {
 
 def score_dimension(row: dict, dimension_key: str, keywords: list[str] | None = None) -> int:
     """Score a single dimension (1-5).
-    
+
     If a registered scorer exists for the dimension_key, use it.
     Otherwise, fall back to keyword heuristics if keywords are provided.
-    
+
     Args:
         row: The data row to score.
         dimension_key: The dimension identifier (e.g., 'technical_depth').
         keywords: Optional list of keywords for heuristic scoring.
-    
+
     Returns:
         Score from 1-5.
     """
     scorer = SCORERS.get(dimension_key)
     if scorer:
         return scorer(row)
-    
+
     # Fallback to keyword heuristics
     if keywords:
         text = get_text_blob(row)
         return apply_keyword_heuristics(text, keywords)
-    
+
     return 1  # Default score if no scorer and no keywords
 
 
 def score_contact(row: dict, dimensions: list[dict]) -> dict:
     """Score all dimensions for a contact, return scores and tier.
-    
+
     Args:
         row: The contact/leaderboard row to score.
         dimensions: List of dimension dicts with 'key', 'label', 'weight'.
-    
+
     Returns:
         Dict with:
             - scores: {dimension_key: score} mapping
@@ -271,18 +270,18 @@ def score_contact(row: dict, dimensions: list[dict]) -> dict:
         key = dim["key"]
         keywords = dim.get("keywords")  # Optional custom keywords
         scores[key] = score_dimension(row, key, keywords)
-    
+
     composite = sum(scores.values())
     max_possible = len(dimensions) * 5
     pct = composite / max_possible if max_possible else 0
-    
+
     if pct >= 0.8:
         tier = "🔴 Top Tier"
     elif pct >= 0.6:
         tier = "🟡 Mid Tier"
     else:
         tier = "⚪ Speculative"
-    
+
     return {
         "scores": scores,
         "composite": composite,
@@ -294,52 +293,52 @@ def score_contact(row: dict, dimensions: list[dict]) -> dict:
 
 def evidence_sentence(row: dict, dim_key: str) -> str:
     """Generate a brief evidence sentence for a dimension score.
-    
+
     Args:
         row: The data row.
         dim_key: The dimension key.
-    
+
     Returns:
         Human-readable evidence string.
     """
     text = get_text_blob(row)
-    
+
     if dim_key == "technical_depth":
         hits = get_matching_keywords(text, TECH_KEYWORDS, limit=5)
         if hits:
             return f"Keywords matched: {', '.join(hits)}."
         return "No technical keywords found in profile."
-    
+
     if dim_key == "forecasting":
         hits = get_matching_keywords(text, QUANT_KEYWORDS, limit=5)
         if hits:
             return f"Keywords matched: {', '.join(hits)}."
         return "No quantitative keywords found in profile."
-    
+
     if dim_key == "operational_reliability":
         lsm = row.get("leaderboard_score_month") or 0
         mt = row.get("monthly_tasks") or 0
         return f"Leaderboard score (month): {lsm}, monthly tasks: {mt}."
-    
+
     if dim_key == "engagement_consistency":
         wr = row.get("weekly_rewards") or 0
         lsw = row.get("leaderboard_score_week") or 0
         return f"Weekly rewards: {wr:,.0f}, leaderboard score (week): {lsw}."
-    
+
     return "No evidence available."
 
 
 def infer_role(row: dict) -> str:
     """Infer a likely role based on profile keywords.
-    
+
     Args:
         row: The data row with capabilities, summary, etc.
-    
+
     Returns:
         Role string like 'Signal / Quant', 'Infrastructure', etc.
     """
     text = get_text_blob(row)
-    
+
     if any(kw in text for kw in ["trading", "quant", "alpha", "signal"]):
         return "Signal / Quant"
     if any(kw in text for kw in ["infrastructure", "devops", "kubernetes", "docker"]):
@@ -348,5 +347,5 @@ def infer_role(row: dict) -> str:
         return "Protocol Engineer"
     if any(kw in text for kw in ["research", "analytics", "data science"]):
         return "Researcher"
-    
+
     return "Contributor"
