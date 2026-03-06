@@ -13,6 +13,7 @@ from .commands.doctor import doctor_command
 from .commands.set_context import set_context_cmd
 from .commands.rerank import rerank_cmd
 from .commands.wizard import wizard_cmd
+from .commands.prospect import prospect_cmd
 
 DEFAULT_DB = os.path.expanduser("~/.pf-scout/contacts.db")
 
@@ -38,6 +39,7 @@ cli.add_command(doctor_command)
 cli.add_command(set_context_cmd)
 cli.add_command(rerank_cmd)
 cli.add_command(wizard_cmd)
+cli.add_command(prospect_cmd)
 
 
 def main():

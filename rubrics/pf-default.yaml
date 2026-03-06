@@ -1,0 +1,55 @@
+name: pf-default
+version: "1.0"
+description: >
+  Generic 4-dimension rubric for Post Fiat contributor assessment.
+  Covers technical capability, quantitative potential, operational track record,
+  and engagement consistency. Suitable for any PF node operator.
+
+tiers:
+  - name: "🔴 Top Tier"
+    min_pct: 0.80
+    description: "Strong prospect — prioritize outreach"
+  - name: "🟡 Mid Tier"
+    min_pct: 0.60
+    description: "Promising — monitor and engage"
+  - name: "⚪ Speculative"
+    min_pct: 0.0
+    description: "Early signal — needs more data"
+
+dimensions:
+  - key: technical_depth
+    label: "Technical Depth"
+    weight: 1
+    guide: |
+      Keyword search across capabilities, expert_knowledge, and summary.
+      Keywords: infrastructure, devops, backend, engineering, smart contract,
+      blockchain, solidity, rust, python, go, typescript, kubernetes, docker,
+      cloud, aws, api, protocol, security, cryptography, zk, evm, validator, rpc.
+      0 hits→1, 1→2, 2→3, 3-4→4, 5+→5. Bonus +1 if sybil_score >= 85.
+
+  - key: forecasting
+    label: "Forecasting / Quantitative Potential"
+    weight: 1
+    guide: |
+      Keyword search across capabilities, expert_knowledge, and summary.
+      Keywords: quant, quantitative, machine learning, ml, statistics, trading,
+      signal, forecasting, data science, analytics, on-chain, onchain, backtesting,
+      risk management, portfolio, financial modeling, time series, alpha, macro,
+      research, modeling, prediction, probability.
+      0→1, 1→2, 2→3, 3-4→4, 5+→5. Bonus +1 if alignment_score >= 90.
+      Bonus +1 if monthly_rewards > 500,000.
+
+  - key: operational_reliability
+    label: "Operational Reliability"
+    weight: 1
+    guide: |
+      Based on leaderboard_score_month: <15→1, 15-39→2, 40-59→3, 60-79→4, >=80→5.
+      Bonus +1 if monthly_tasks >= 30. Bonus +1 if weekly/monthly reward ratio
+      is between 0.2 and 0.35.
+
+  - key: engagement_consistency
+    label: "Engagement Consistency"
+    weight: 1
+    guide: |
+      Based on weekly_rewards: 0→1, >0→2, >50000→3, >150000→4, >300000→5.
+      Bonus +1 if leaderboard_score_week > 50.
