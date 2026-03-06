@@ -67,8 +67,8 @@ SQLite. Single file, portable, no server dependency. Default path: `~/.pf-scout/
 CREATE TABLE contacts (
     id              TEXT PRIMARY KEY,          -- UUID v4, system-assigned
     canonical_label TEXT NOT NULL,             -- best available display name (updated as signals arrive)
-    first_seen      TEXT NOT NULL,             -- UTC ISO8601 with timezone
-    last_updated    TEXT NOT NULL,             -- UTC ISO8601 with timezone
+    first_seen      TEXT NOT NULL,             -- UTC ISO8601, always suffixed with Z (e.g. 2026-03-06T16:00:00Z)
+    last_updated    TEXT NOT NULL,             -- UTC ISO8601, always suffixed with Z (e.g. 2026-03-06T16:00:00Z)
     tags            TEXT NOT NULL DEFAULT '[]',-- JSON array of free-form tags
     notes_count     INTEGER NOT NULL DEFAULT 0,-- denormalized count for display
     archived        INTEGER NOT NULL DEFAULT 0 -- 0=active, 1=soft-deleted (data preserved)
@@ -144,13 +144,14 @@ CREATE TABLE notes (
 -- INDEXES
 -- ─────────────────────────────────────────────────
 CREATE INDEX idx_identifiers_contact    ON identifiers(contact_id);
-CREATE INDEX idx_identifiers_platform   ON identifiers(platform, identifier_value);
+-- idx_identifiers_platform is implicit from UNIQUE(platform, identifier_value) — not duplicated
 CREATE INDEX idx_signals_contact        ON signals(contact_id);
 CREATE INDEX idx_signals_identifier     ON signals(identifier_id);
 CREATE INDEX idx_signals_collected      ON signals(collected_at);
 CREATE INDEX idx_signals_source         ON signals(source, signal_type);
 CREATE INDEX idx_snapshots_contact      ON snapshots(contact_id, rubric_name, snapshot_ts);
 CREATE INDEX idx_notes_contact          ON notes(contact_id);
+CREATE INDEX idx_signals_fingerprint     ON signals(event_fingerprint); -- explicit name; UNIQUE constraint creates this implicitly
 ```
 
 **Note**: there are no `current_score` or `current_tier` cache fields on `contacts`. Snapshots are the source of truth. The latest snapshot is always queried when needed — it is cheap in SQLite with the index on `(contact_id, rubric_name, snapshot_ts)`.
@@ -553,7 +554,7 @@ def get_connection(db_path: str) -> sqlite3.Connection:
 
 **Backup:** `pf-scout export --output backup.json` is the primary backup mechanism. The SQLite file can also be copied directly when no write is in progress (WAL mode makes this safe). No automated backup in v1; document this explicitly.
 
-**Migration:** Schema migrations use a `schema_version` table. On open, check version; if behind, apply migrations in order. Never alter tables destructively.
+**Migration:** Schema migrations use `PRAGMA user_version` (a single integer in SQLite's file header, readable without parsing any table, survives partial schema corruption). `PRAGMA user_version = N` after applying migration N. On open, check version; if behind, apply migrations in order. Never alter tables destructively.
 
 ---
 
