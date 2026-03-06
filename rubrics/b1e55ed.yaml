@@ -1,0 +1,71 @@
+name: b1e55ed
+version: "1.0"
+description: "Post Fiat contributor assessment rubric"
+
+tiers:
+  - name: "S"
+    min_score: 4.5
+    description: "Exceptional — actively recruit"
+  - name: "A"
+    min_score: 3.5
+    description: "Strong — prioritize outreach"
+  - name: "B"
+    min_score: 2.5
+    description: "Promising — monitor and engage"
+  - name: "C"
+    min_score: 1.5
+    description: "Early — needs more signal"
+  - name: "D"
+    min_score: 0.0
+    description: "Insufficient — revisit later"
+
+dimensions:
+  - key: technical_depth
+    label: "Technical Depth"
+    weight: 0.25
+    guide: |
+      1: No public code or trivial contributions
+      2: Some repos, basic code quality
+      3: Regular contributor, decent architecture
+      4: Strong engineering, complex systems
+      5: Exceptional depth, innovative solutions
+
+  - key: consistency
+    label: "Consistency & Activity"
+    weight: 0.20
+    guide: |
+      1: Sporadic or no recent activity
+      2: Occasional commits/contributions
+      3: Regular activity (weekly)
+      4: Very active, sustained over months
+      5: Daily contributor, years of consistency
+
+  - key: collaboration
+    label: "Collaboration Signal"
+    weight: 0.20
+    guide: |
+      1: Solo work only, no community engagement
+      2: Occasional PRs or issues on others' repos
+      3: Regular cross-project contributions
+      4: Active in multiple communities/orgs
+      5: Community leader, mentors others
+
+  - key: domain_relevance
+    label: "Domain Relevance"
+    weight: 0.20
+    guide: |
+      1: No relevant domain experience
+      2: Tangential experience
+      3: Some relevant work (crypto, AI, distributed)
+      4: Strong relevant portfolio
+      5: Deep expert in target domain
+
+  - key: culture_fit
+    label: "Culture & Values Fit"
+    weight: 0.15
+    guide: |
+      1: No signal on values/culture
+      2: Some alignment indicators
+      3: Shares key values (open source, etc)
+      4: Strong cultural alignment
+      5: Perfect fit — mission-driven builder
