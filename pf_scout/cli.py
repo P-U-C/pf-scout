@@ -14,6 +14,7 @@ from .commands.set_context import set_context_cmd
 from .commands.rerank import rerank_cmd
 from .commands.wizard import wizard_cmd
 from .commands.prospect import prospect_cmd
+from .commands.diff import diff_command
 from .commands.merge import merge_cmd
 from .commands.tag import tag_cmd
 from .commands.archive import archive_cmd
@@ -44,9 +45,11 @@ cli.add_command(set_context_cmd)
 cli.add_command(rerank_cmd)
 cli.add_command(wizard_cmd)
 cli.add_command(prospect_cmd)
+cli.add_command(diff_command)
 cli.add_command(merge_cmd)
 cli.add_command(tag_cmd)
 cli.add_command(archive_cmd)
+cli.add_command(list_command)
 
 
 def main():
