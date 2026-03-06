@@ -1,3 +1,5 @@
 """pf-scout: Contact intelligence for Post Fiat contributor recruitment."""
 
-__version__ = "1.0.0"
+from pf_scout.__version__ import __version__
+
+__all__ = ["__version__"]
