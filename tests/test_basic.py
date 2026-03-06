@@ -67,14 +67,14 @@ class TestInit:
 
     def test_init_command(self, runner, tmp_path):
         db_path = str(tmp_path / "cmd_test.db")
-        result = runner.invoke(cli, ["init", "--db", db_path])
+        result = runner.invoke(cli, ["--db", db_path, "init"])
         assert result.exit_code == 0
         assert "Initialized" in result.output
         assert os.path.exists(db_path)
 
     def test_init_creates_gitignore(self, runner, tmp_path):
         db_path = str(tmp_path / "sub" / "contacts.db")
-        result = runner.invoke(cli, ["init", "--db", db_path])
+        result = runner.invoke(cli, ["--db", db_path, "init"])
         assert result.exit_code == 0
         gitignore = tmp_path / "sub" / ".gitignore"
         assert gitignore.exists()

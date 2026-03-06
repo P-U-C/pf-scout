@@ -10,11 +10,10 @@ DEFAULT_DB = os.path.join(DEFAULT_DIR, "contacts.db")
 
 
 @click.command("init")
-@click.option("--db", "db_path", default=None, help="Path to database file")
-def init_command(db_path):
+@click.pass_context
+def init_command(ctx):
     """Initialize the pf-scout database."""
-    if db_path is None:
-        db_path = DEFAULT_DB
+    db_path = ctx.obj.get("db_path") or DEFAULT_DB
 
     db_dir = os.path.dirname(db_path)
 
