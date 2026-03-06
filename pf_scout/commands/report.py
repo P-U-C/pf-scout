@@ -63,18 +63,18 @@ def _score_all(rows: list[dict], dimensions: list[dict]) -> list[dict]:
 
 def _filter_by_tier(scored: list[dict], tier_filter: str) -> list[dict]:
     """Filter scored list by tier.
-    
+
     Args:
         scored: List of scored contact dicts.
         tier_filter: 'top', 'mid', 'speculative', or 'all'.
-    
+
     Returns:
         Filtered list.
     """
     tier_filter = tier_filter.lower()
     if tier_filter == "all":
         return scored
-    
+
     tier_map = {
         "top": "🔴 Top Tier",
         "mid": "🟡 Mid Tier",
@@ -83,7 +83,7 @@ def _filter_by_tier(scored: list[dict], tier_filter: str) -> list[dict]:
     target_tier = tier_map.get(tier_filter)
     if not target_tier:
         return scored
-    
+
     return [s for s in scored if s["tier"] == target_tier]
 
 
@@ -95,35 +95,35 @@ def _generate_markdown(
 ) -> str:
     """Generate a markdown report."""
     today = datetime.utcnow().strftime("%Y-%m-%d")
-    
+
     # Count tiers
     tier_counts = {}
     for s in scored:
         tier_counts[s["tier"]] = tier_counts.get(s["tier"], 0) + 1
-    
+
     lines = []
     lines.append(f"# {title}\n")
     lines.append(f"*Generated {today} | {len(scored)} contacts | Rubric: {rubric_name}*\n")
     lines.append("---\n")
-    
+
     # Summary statistics
     lines.append("## Summary\n")
     for tier, count in tier_counts.items():
         lines.append(f"- {tier}: {count}")
     lines.append("")
-    
+
     if scored:
         avg_composite = sum(s["composite"] for s in scored) / len(scored)
         lines.append(f"- Average composite score: {avg_composite:.1f}/{scored[0]['max']}")
     lines.append("\n---\n")
-    
+
     # Table
     lines.append("## Scored Contacts\n")
     dim_headers = " | ".join(d["label"] for d in dimensions)
     lines.append(f"| # | Name | Wallet | {dim_headers} | Composite | Role | Tier |")
     sep = " | ".join("---" for _ in dimensions)
     lines.append(f"|---|------|--------|{sep}|-----------|------|------|")
-    
+
     for i, s in enumerate(scored, 1):
         dim_vals = " | ".join(str(s["scores"].get(d["key"], "-")) for d in dimensions)
         wallet_short = f"`{s['wallet'][:12]}…`" if len(s["wallet"]) > 12 else f"`{s['wallet']}`"
@@ -131,7 +131,7 @@ def _generate_markdown(
             f"| {i} | {s['label']} | {wallet_short} | {dim_vals} | "
             f"{s['composite']}/{s['max']} | {s['role']} | {s['tier']} |"
         )
-    
+
     lines.append("")
     return "\n".join(lines)
 
@@ -139,14 +139,14 @@ def _generate_markdown(
 def _generate_csv(scored: list[dict], dimensions: list[dict]) -> str:
     """Generate a CSV report."""
     output = io.StringIO()
-    
+
     # Build header
     fieldnames = ["rank", "name", "wallet", "role", "tier", "composite", "max", "pct"]
     fieldnames.extend(d["key"] for d in dimensions)
-    
+
     writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
-    
+
     for i, s in enumerate(scored, 1):
         row = {
             "rank": i,
@@ -161,7 +161,7 @@ def _generate_csv(scored: list[dict], dimensions: list[dict]) -> str:
         for d in dimensions:
             row[d["key"]] = s["scores"].get(d["key"], "")
         writer.writerow(row)
-    
+
     return output.getvalue()
 
 
@@ -174,7 +174,7 @@ def _generate_json(scored: list[dict], dimensions: list[dict], rubric_name: str)
         "total_contacts": len(scored),
         "contacts": [],
     }
-    
+
     for i, s in enumerate(scored, 1):
         report["contacts"].append({
             "rank": i,
@@ -187,7 +187,7 @@ def _generate_json(scored: list[dict], dimensions: list[dict], rubric_name: str)
             "pct": round(s["pct"], 4),
             "scores": s["scores"],
         })
-    
+
     return json.dumps(report, indent=2)
 
 
@@ -209,19 +209,19 @@ def _generate_json(scored: list[dict], dimensions: list[dict], rubric_name: str)
 @click.pass_context
 def report_cmd(ctx, rubric_path, output_path, output_format, tier_filter, title, min_composite, limit):
     """Generate reports from DB snapshots.
-    
+
     Uses stored leaderboard data (not live API) for consistent reporting.
-    
+
     Examples:
-    
+
         pf-scout report --format csv --tier top -o top-prospects.csv
-        
+
         pf-scout report --rubric rubrics/custom.yaml --format json
-        
+
         pf-scout report --min-composite 12 --limit 20
     """
     db_path = ctx.obj["db_path"]
-    
+
     # Load dimensions
     if rubric_path:
         try:
@@ -233,30 +233,30 @@ def report_cmd(ctx, rubric_path, output_path, output_format, tier_filter, title,
     else:
         rubric_name = "pf-default (4-dimension)"
         dimensions = DEFAULT_DIMENSIONS
-    
+
     # Load data from DB
     rows = _load_from_db(db_path)
     if not rows:
         raise click.ClickException(
             "No postfiat/leaderboard signals in DB. Run: pf-scout seed postfiat first."
         )
-    
+
     click.echo(f"Loaded {len(rows)} contacts from DB", err=True)
-    
+
     # Score all contacts
     scored = _score_all(rows, dimensions)
-    
+
     # Apply filters
     if min_composite > 0:
         scored = [s for s in scored if s["composite"] >= min_composite]
-    
+
     scored = _filter_by_tier(scored, tier_filter)
-    
+
     if limit:
         scored = scored[:limit]
-    
+
     click.echo(f"Reporting on {len(scored)} contacts (tier={tier_filter}, min={min_composite})", err=True)
-    
+
     # Generate output
     if output_format == "markdown":
         output = _generate_markdown(scored, dimensions, rubric_name, title)
@@ -266,7 +266,7 @@ def report_cmd(ctx, rubric_path, output_path, output_format, tier_filter, title,
         output = _generate_json(scored, dimensions, rubric_name)
     else:
         raise click.ClickException(f"Unknown format: {output_format}")
-    
+
     # Write output
     if output_path:
         Path(output_path).write_text(output)
