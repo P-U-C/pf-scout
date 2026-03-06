@@ -4,6 +4,27 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Tuple, Optional
 
+SIGNAL_REGISTRY = {
+    "github/profile": {
+        "source": "github",
+        "idempotent": True,
+        "redaction_fields": ["email"],
+        "description": "GitHub user profile snapshot",
+    },
+    "github/repo_stats": {
+        "source": "github",
+        "idempotent": True,
+        "redaction_fields": [],
+        "description": "GitHub repository statistics for a user",
+    },
+    "postfiat/context": {
+        "source": "postfiat",
+        "idempotent": False,
+        "redaction_fields": [],
+        "description": "PF Context document — user's stated Value, Strategy, Tactics",
+    },
+}
+
 
 @dataclass
 class CollectedSignal:
