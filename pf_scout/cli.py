@@ -3,6 +3,9 @@
 import os
 import click
 from .commands.init import init_command
+from .commands.add import add_command
+from .commands.link import link_command
+from .commands.show import show_command
 
 DEFAULT_DB = os.path.expanduser("~/.pf-scout/contacts.db")
 
@@ -18,6 +21,9 @@ def cli(ctx, db_path):
 
 
 cli.add_command(init_command)
+cli.add_command(add_command)
+cli.add_command(link_command)
+cli.add_command(show_command)
 
 
 def main():
