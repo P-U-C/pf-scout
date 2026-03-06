@@ -25,6 +25,8 @@ pf-scout update github:allenday --cookie "$PF_SESSION_COOKIE"
 
 Auth: Tasknode session cookie. Get it from your browser: F12 → Application → Cookies → tasknode.postfiat.org → copy the session cookie value.
 
+**Security note**: The `--base-url` option defaults to `https://tasknode.postfiat.org`. Only override this for local development or testing — passing untrusted user input as `base_url` is an SSRF risk.
+
 **Content-addressed dedup**: A new signal is only stored when the prospect's Context document actually changes. Re-running collection is safe.
 
 **Graceful fallback**: If a prospect's Context is not accessible (auth required), the collector stores a stub signal with `auth_required: true` and the contact card shows a warning rather than failing.

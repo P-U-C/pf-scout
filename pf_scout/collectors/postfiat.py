@@ -45,6 +45,8 @@ class PostFiatCollector(BaseCollector):
                 # Parse sections (best-effort)
                 sections = _parse_context_sections(raw_markdown)
 
+                # raw_markdown stored as-is for fidelity. If ever rendered in a web UI,
+                # sanitize before display (strip script tags, etc.). CLI display is safe.
                 payload = {
                     "raw_markdown": raw_markdown,
                     "version_ts": _now_utc(),

@@ -22,21 +22,21 @@ def _load_context_keywords(context_md: str) -> list[str]:
 
 
 def _alignment_notes(my_keywords: list[str], prospect_context: str) -> list[str]:
-    """Keyword-based alignment between recruiter context and prospect context."""
+    """Keyword-based alignment — word-boundary matching to avoid false positives."""
     if not prospect_context:
         return []
     prospect_lower = prospect_context.lower()
-    matches = [kw for kw in set(my_keywords) if kw in prospect_lower]
-    return sorted(matches)[:8]  # top 8 keyword matches
+    matches = [kw for kw in set(my_keywords)
+               if re.search(r'\b' + re.escape(kw) + r'\b', prospect_lower)]
+    return sorted(matches)[:8]
 
 
 @click.command("rerank")
 @click.option("--rubric", "rubric_path", type=click.Path(exists=True), help="Rubric YAML")
 @click.option("--format", "fmt", type=click.Choice(["md", "json", "csv"]), default="md")
-@click.option("--snapshot", is_flag=True, help="Save rerank result as a note")
 @click.option("--tier", type=click.Choice(["top", "mid", "speculative"]), help="Filter by tier")
 @click.pass_context
-def rerank_cmd(ctx, rubric_path, fmt, snapshot, tier):
+def rerank_cmd(ctx, rubric_path, fmt, tier):
     """Re-rank all contacts by fit against your current PF Context. Read-only."""
     db_path = ctx.obj["db_path"]
     scout_dir = Path(db_path).parent

@@ -71,6 +71,15 @@ def set_context_cmd(ctx, cookie, file_path, base_url):
     }
     state_path.write_text(json.dumps(state, indent=2))
 
+    # Ensure my-context.md and context-state.json are gitignored
+    gitignore_path = scout_dir / ".gitignore"
+    entries_to_add = ["my-context.md", "context-state.json"]
+    existing = gitignore_path.read_text() if gitignore_path.exists() else ""
+    with open(gitignore_path, "a") as f:
+        for entry in entries_to_add:
+            if entry not in existing:
+                f.write(f"{entry}\n")
+
     click.echo(f"✅ Context updated ({word_count} words, {state['version_label']})")
     click.echo(f"   Stored at: {context_path}")
 
