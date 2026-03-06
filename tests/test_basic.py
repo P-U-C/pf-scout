@@ -394,6 +394,29 @@ Focus on data pipelines
         assert "analytics" in matches
 
 
+class TestWizard:
+    """Wizard command tests."""
+
+    def test_wizard_invokes_without_error(self, tmp_db, runner):
+        """Wizard --yes flag runs non-interactively without crashing."""
+        result = runner.invoke(cli, ["--db", tmp_db, "wizard", "--yes"])
+        assert result.exit_code == 0
+
+    def test_wizard_yes_creates_db(self, tmp_db, runner):
+        """Wizard --yes initializes the database."""
+        result = runner.invoke(cli, ["--db", tmp_db, "wizard", "--yes"])
+        assert result.exit_code == 0
+        assert "Setup complete" in result.output
+        assert os.path.exists(tmp_db)
+
+    def test_wizard_yes_shows_summary(self, tmp_db, runner):
+        """Wizard --yes prints summary with next steps."""
+        result = runner.invoke(cli, ["--db", tmp_db, "wizard", "--yes"])
+        assert result.exit_code == 0
+        assert "Next steps" in result.output
+        assert "pf-scout list" in result.output
+
+
 class TestDuplicateSignal:
     """Test that duplicate signals are silently ignored."""
 

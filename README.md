@@ -16,6 +16,13 @@ pip install -e .
 ## Quick start
 
 ```bash
+# Run the interactive wizard (recommended for first-time setup)
+pf-scout wizard
+```
+
+Or set up manually:
+
+```bash
 # Initialize workspace (creates ~/.pf-scout/, contacts.db, .gitignore)
 pf-scout init
 
@@ -42,6 +49,7 @@ pf-scout report --rubric rubrics/b1e55ed.yaml --output prospects.md
 
 | Command | Description |
 |---------|-------------|
+| `pf-scout wizard` | Interactive setup wizard (recommended) |
 | `pf-scout init` | Initialize workspace |
 | `pf-scout add` | Add a contact with identifiers |
 | `pf-scout link` | Link two identifiers to same contact |

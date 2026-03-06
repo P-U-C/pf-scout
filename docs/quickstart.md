@@ -1,5 +1,15 @@
 # Quickstart
 
+## Option A: Wizard (recommended)
+
+```bash
+pf-scout wizard
+```
+
+Guides you through workspace init, GitHub token, seeding, PF Context setup, and rubric selection in ~2 minutes.
+
+## Option B: Manual setup
+
 ## 1. Initialize
 ```bash
 pf-scout init
