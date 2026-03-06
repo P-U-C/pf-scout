@@ -612,7 +612,185 @@ These were addressed or deferred; documenting resolution:
 | Phase | Scope | Status |
 |-------|-------|--------|
 | v0 | One-shot CSV → score → markdown prototype | ✅ Done (workspace) |
-| v1 | SQLite store + contact/identifier model + seed/update/show/report CLI + GitHub + manual collectors + manual scoring | 🔲 This spec |
-| v2 | PF platform collector, auto-scoring engine, inferred identity linking, score decay, OS keychain auth | 🔲 Roadmap |
+| v1 | SQLite store + contact/identifier model + seed/update/show/report CLI + GitHub + manual collectors + manual scoring | ✅ Built |
+| v1.1 | PF Context integration — `postfiat/context` signal, `set-context`, `rerank`, context-aware contact card | 🔲 This spec |
+| v2 | LLM-assisted scoring (recruiter Context × prospect Context), auto-scoring engine, inferred identity linking, score decay | 🔲 Roadmap |
 | v3 | Twitter collector, Discord export collector, multi-rubric reports, alert system | 🔲 Roadmap |
 | v4 | Web UI, hosted mode, team sharing | 🔲 Roadmap |
+
+---
+
+## 14. PF Context Integration (v1.1)
+
+### 14.1 Why Context is the Primary Signal
+
+Post Fiat's Context document (`/context` on tasknode) is not a profile field — it is the protocol's source of truth for a user's identity, intent, and evolving strategy. It contains:
+
+- **Value**: what the user brings (skills, background, expertise)
+- **Strategy**: what they are building toward
+- **Tactics**: their Immediate Next 3 Moves
+
+Every task the protocol generates for a user is derived from their Context. Task completion history, PFT balance, and capability tags are all downstream of Context. For recruiting, this means:
+
+> **A prospect's Context document is the richest single signal available.** Everything else (GitHub commits, task history, PFT) is corroboration.
+
+Similarly, the recruiter's own Context document is the natural scoring lens — it encodes exactly what gaps exist, what is already covered, and what the immediate priorities are. Weight overrides derived from a hand-rolled `context.yaml` are an inferior substitute for reading the recruiter's actual stated intent.
+
+### 14.2 New Signal Type: `postfiat/context`
+
+Added to the §6 signal type registry:
+
+| signal_type | source | source_event_id | payload fields | redaction_fields |
+|---|---|---|---|---|
+| `postfiat/context` | postfiat | content hash (SHA256 of raw markdown) | `raw_markdown`, `version_ts`, `word_count`, `section_value`, `section_strategy`, `section_tactics` | none (user's own public statement) |
+
+**Collection behavior:**
+- Fetched via tasknode authenticated session (`PF_SESSION_COOKIE`)
+- `source_event_id` = SHA256 of raw markdown — content-addressed; a new signal is only created when the document changes
+- `idempotent = False` — each collection run checks for content change; if unchanged, no new signal (same fingerprint → INSERT OR IGNORE)
+- Re-fetched on every `pf-scout update` run (Context evolves)
+- Parsed into sections: `section_value`, `section_strategy`, `section_tactics` extracted via markdown heading detection (best-effort; raw markdown always stored)
+
+**Payload example:**
+```json
+{
+  "raw_markdown": "## Value\nBigQuery blockchain analytics...\n## Strategy\nBuild data infra for DeFi...\n## Tactics\n1. Launch on-chain analytics product",
+  "version_ts": "2026-03-06T18:00:00Z",
+  "word_count": 312,
+  "section_value": "BigQuery blockchain analytics, ML pipelines at scale",
+  "section_strategy": "Build data infrastructure for DeFi protocols",
+  "section_tactics": "1. Launch on-chain analytics product\n2. ..."
+}
+```
+
+### 14.3 Recruiter Context State
+
+The recruiter's own PF Context is stored separately from contact signals — it is the lens, not a contact record.
+
+**State file:** `~/.pf-scout/my-context.md` (gitignored by default)
+**Version tracking:** `~/.pf-scout/context-state.json`
+
+```json
+{
+  "fetched_at": "2026-03-06T18:00:00Z",
+  "content_hash": "sha256:abc123...",
+  "source": "tasknode",
+  "version_label": "2026-03-06"
+}
+```
+
+### 14.4 New CLI Commands
+
+```bash
+# Pull your own PF Context from tasknode
+pf-scout set-context --cookie "$PF_SESSION"
+# → Fetches /context, stores at ~/.pf-scout/my-context.md
+# → Updates context-state.json with version + hash
+# → Prints: "Context updated (312 words, 2026-03-06)"
+
+# Use a local file instead
+pf-scout set-context --file my-context.md
+
+# Rerank all contacts against current contexts (no re-collection)
+pf-scout rerank [--rubric rubrics/b1e55ed.yaml] [--format md|json|csv]
+# → Loads your my-context.md
+# → Loads latest postfiat/context signal for each contact
+# → Displays ranked list with context alignment notes
+# → No writes to DB — read-only analysis
+
+# Rerank and save as snapshot
+pf-scout rerank --rubric rubrics/b1e55ed.yaml --snapshot
+```
+
+### 14.5 Context-Aware Contact Card
+
+When a `postfiat/context` signal exists for a contact, `pf-scout show` appends a **PF Context** section to the card:
+
+```
+── PF CONTEXT (fetched 2026-03-06) ──────────────────────────
+  Value:    BigQuery blockchain analytics, ML pipelines
+  Strategy: Build data infrastructure for DeFi protocols
+  Tactics:
+    1. Launch on-chain analytics product
+    2. ...
+
+  Context alignment (vs your context @ 2026-03-06):
+    Gap covered: on-chain data producer           ← matched to your tactics
+    Overlap: data infrastructure, ML pipelines    ← keyword alignment
+    ⚠ No market analysis stated in their tactics  ← gap in their context
+──────────────────────────────────────────────────────────────
+```
+
+Alignment is computed via keyword matching in v1.1 (no LLM). The LLM-based semantic comparison is v2.
+
+### 14.6 `rerank` Output Format
+
+```
+RERANK — b1e55ed.yaml v1.0 | Your context: 2026-03-06 | 17 contacts
+
+Rank  Contact          Tier   Score  Context Alignment
+────  ───────────────  ─────  ─────  ──────────────────────────────────────
+  1   Allen Day        🔴TOP  24.9   ✅ on-chain data (your gap #1)
+  2   Citrini7         🔴TOP  22.1   ✅ market signals (your gap #2)
+  3   DRavlic          🔴TOP  19.8   ⚠ no PF context fetched yet
+  4   goodalexander    🔴TOP  22.4   ✅ quant + market (both gaps)
+ ...
+```
+
+Contacts without a `postfiat/context` signal are flagged `⚠ no PF context fetched yet` — prompts the operator to run `pf-scout update` with a PF session cookie.
+
+### 14.7 Closed-Loop Recruitment Flow
+
+```
+1. pf-scout set-context --cookie "$PF_SESSION"
+   → Your stated gaps become the scoring lens
+
+2. pf-scout update --all --cookie "$PF_SESSION" --rubric rubrics/b1e55ed.yaml
+   → Fetches each prospect's current Context
+   → Re-collects GitHub + PFT signals
+   → Prompts for scores where needed
+
+3. pf-scout rerank --rubric rubrics/b1e55ed.yaml
+   → Ranked list against your current context
+
+4. You reach out to top-ranked contacts
+
+5. They complete PF tasks, update their Context
+
+6. Next update cycle: their postfiat/context signal changes
+   → Scores update to reflect their evolution
+   → Rerank reflects new state
+
+7. Your context evolves (new gaps, gaps filled)
+   → pf-scout set-context → rerank
+   → Rankings shift without re-collection
+```
+
+This is the closed loop the PF protocol is designed for — pf-scout is a native participant in it, not a layer on top.
+
+### 14.8 v2 Auto-Scoring Path (enabled by Context)
+
+With Context signals available, the v2 auto-scoring problem becomes tractable:
+
+- **Input A**: recruiter's `my-context.md` (what gaps exist, what is already covered)
+- **Input B**: prospect's `postfiat/context` payload (their stated value/strategy/tactics)
+- **Input C**: structured signals (GitHub commits, task completions, PFT)
+- **LLM**: score each rubric dimension with rationale → `auto_score_hints` become real suggestions
+- **Human review**: auto-scores flagged `is_manual: false`; human confirms or overrides
+
+The key: Context documents are written in natural language by humans describing themselves. LLM comparison of two natural-language intent documents is reliable. Scoring from keyword matching on bio fields is not.
+
+### 14.9 Tasknode API Requirements
+
+The `postfiat/context` collector requires:
+
+| Requirement | Status |
+|---|---|
+| `PF_SESSION_COOKIE` — authenticated tasknode session | Needed from operator |
+| Endpoint: GET `/context` (own context) | Confirmed exists |
+| Endpoint: GET `/context?user=<wallet>` (prospect context) | **To verify** — may require auth or may be public |
+| Endpoint: GET `/api/users` or `/leaderboard` for wallet→handle mapping | Confirmed exists (auth required) |
+
+**If prospect context is not publicly readable**: collector falls back to `null` payload with `evidence_note: "context not accessible — operator session required"`. The contact card shows `⚠ PF Context: requires authentication`.
+
+**v1.1 implementation note**: Start with own-context fetch (`set-context`) which is always auth'd. Prospect context fetch depends on API accessibility — implement optimistically, fail gracefully.
