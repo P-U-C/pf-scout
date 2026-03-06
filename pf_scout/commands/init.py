@@ -2,7 +2,6 @@
 
 import os
 import click
-from pathlib import Path
 from ..schema import init_db
 
 DEFAULT_DIR = os.path.expanduser("~/.pf-scout")

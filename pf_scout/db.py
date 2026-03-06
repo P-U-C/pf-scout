@@ -1,7 +1,6 @@
 """Database connection utilities."""
 
 import sqlite3
-from pathlib import Path
 
 
 def get_connection(db_path: str) -> sqlite3.Connection:

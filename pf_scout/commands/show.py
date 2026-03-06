@@ -1,7 +1,6 @@
 """pf-scout show command."""
 
 import json
-from datetime import datetime
 
 import click
 
@@ -117,24 +116,24 @@ def render_markdown(contact, identifiers, signals, notes):
     """Render contact data as Markdown."""
     lines = []
     lines.append(f"# {contact['canonical_label']}")
-    lines.append(f"")
+    lines.append("")
     lines.append(f"**ID:** {contact['id']}")
     lines.append(f"**First seen:** {contact['first_seen']}")
     lines.append(f"**Last updated:** {contact['last_updated']}")
-    lines.append(f"")
+    lines.append("")
 
     if identifiers:
-        lines.append(f"## Identifiers")
+        lines.append("## Identifiers")
         for i in identifiers:
             primary = " ★" if i["is_primary"] else ""
             lines.append(f"- `{i['platform']}:{i['identifier_value']}`{primary} (confidence: {i['link_confidence']})")
-        lines.append(f"")
+        lines.append("")
 
     if signals:
         lines.append(f"## Signals ({len(signals)})")
         for s in signals[:20]:
             lines.append(f"- [{s['signal_type']}] {s['collected_at']}")
-        lines.append(f"")
+        lines.append("")
 
     return "\n".join(lines)
 
