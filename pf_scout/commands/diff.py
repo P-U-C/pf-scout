@@ -126,8 +126,8 @@ def diff_command(ctx, identifier, since, output_format):
 
         # Query snapshots for this contact, ordered by snapshot_ts DESC
         snapshots = conn.execute(
-            """SELECT * FROM snapshots 
-               WHERE contact_id = ? 
+            """SELECT * FROM snapshots
+               WHERE contact_id = ?
                ORDER BY snapshot_ts DESC""",
             (contact_id,)
         ).fetchall()
