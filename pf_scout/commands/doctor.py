@@ -29,7 +29,7 @@ def doctor_command(ctx, rubric_path):
             ok = False
         else:
             click.echo("  ✅ Rubric is valid")
-        
+
         # When validating rubric only, show summary and exit
         if ok:
             click.echo("\n✅ Rubric validation passed")
@@ -39,7 +39,7 @@ def doctor_command(ctx, rubric_path):
         return
 
     # Standard doctor checks
-    
+
     # DB integrity
     click.echo("Checking DB integrity...")
     try:

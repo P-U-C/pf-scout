@@ -14,7 +14,6 @@ from ..scoring import (
     QUANT_KEYWORDS,
     TECH_KEYWORDS,
     evidence_sentence,
-    get_text_blob,
     infer_role,
     score_contact,
     score_engagement_consistency,
@@ -40,7 +39,7 @@ __all__ = [
 
 def score_row(row: dict, dimensions: list[dict]) -> dict:
     """Score a single leaderboard row against the given dimensions.
-    
+
     This is a thin wrapper around scoring.score_contact for backward
     compatibility with existing code and tests.
     """
@@ -105,14 +104,14 @@ def generate_document(
     min_composite: int,
 ) -> str:
     """Score all rows and generate the markdown pipeline document.
-    
+
     Args:
         rows: List of leaderboard row dictionaries.
         dimensions: List of dimension dicts from rubric.
         rubric_name: Name of the rubric for display.
         title: Document title prefix.
         min_composite: Minimum composite score to include.
-    
+
     Returns:
         Markdown document string.
     """
