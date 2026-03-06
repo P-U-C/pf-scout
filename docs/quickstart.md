@@ -24,7 +24,25 @@ pf-scout update github:allenday --rubric rubrics/b1e55ed.yaml
 ```
 Presents each rubric dimension with evidence, prompts for a score (1–5).
 
-## 5. Generate a report
+## 5. Set your PF Context (optional but recommended)
+
+```bash
+export PF_SESSION_COOKIE="your-tasknode-session-cookie"
+pf-scout set-context --cookie "$PF_SESSION_COOKIE"
+```
+
+Your Context document from Post Fiat becomes the scoring lens — contacts whose stated tactics align with your gaps rank higher.
+
+## 6. Re-rank by context fit
+
+```bash
+pf-scout rerank --rubric rubrics/b1e55ed.yaml
+```
+
+Read-only — no re-collection. Re-ranks everyone against your current Context.
+
+## 7. Generate a report
+
 ```bash
 pf-scout report --rubric rubrics/b1e55ed.yaml --tier top --output top-prospects.md
 ```
