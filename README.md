@@ -59,22 +59,41 @@ pf-scout report --rubric rubrics/b1e55ed.yaml --output prospects.md
 
 | Command | Description |
 |---------|-------------|
-| `pf-scout wizard` | Interactive setup wizard (recommended) |
+| `pf-scout wizard` | Interactive setup wizard |
 | `pf-scout init` | Initialize workspace |
 | `pf-scout add` | Add a contact with identifiers |
 | `pf-scout link` | Link two identifiers to same contact |
 | `pf-scout show` | Display contact card |
-| `pf-scout list` | List contacts with optional tier filter |
+| `pf-scout list` | List contacts with scores and filtering |
 | `pf-scout seed github` | Seed contacts from GitHub org |
 | `pf-scout seed postfiat` | Seed contacts from PF leaderboard |
+| `pf-scout seed csv` | Import contacts from CSV file |
 | `pf-scout prospect` | Generate scored prospect pipeline doc |
-| `pf-scout update` | Re-collect signals + score interactively |
-| `pf-scout report` | Generate markdown/CSV report |
-| `pf-scout doctor` | Diagnostic: DB integrity, env vars, rubric |
+| `pf-scout update` | Re-collect signals + score (supports --auto) |
+| `pf-scout report` | Generate report from stored snapshots |
+| `pf-scout note` | Add note to a contact |
+| `pf-scout tag` | Add/remove tags on contacts |
+| `pf-scout merge` | Merge duplicate contacts |
+| `pf-scout archive` | Archive/restore contacts |
+| `pf-scout diff` | Compare snapshots over time |
 | `pf-scout export` | Export contacts to JSON |
-| `pf-scout set-context` | Set your PF Context as the scoring lens |
-| `pf-scout rerank` | Re-rank contacts by context fit (read-only) |
-| `--version` | Show version |
+| `pf-scout doctor` | Diagnostic checks |
+| `pf-scout set-context` | Set your PF Context as scoring lens |
+| `pf-scout rerank` | Re-rank contacts by context fit |
+
+## Authentication
+
+pf-scout uses two authentication methods:
+
+### JWT Token (PF_JWT_TOKEN)
+- **Used for:** `seed postfiat`, `prospect --jwt`
+- **Scope:** Read-only leaderboard data
+- **Get from:** tasknode.postfiat.org → Network tab → Authorization header
+
+### Session Cookie (PF_SESSION_COOKIE)
+- **Used for:** `set-context`, `update --cookie`
+- **Scope:** Authenticated user operations (context fetch)
+- **Get from:** tasknode.postfiat.org → Cookies → session
 
 ## Rubrics
 
