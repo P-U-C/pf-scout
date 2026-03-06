@@ -14,7 +14,36 @@ pf-scout update github:allenday
 
 Auth: GitHub Personal Access Token with `read:org` + `read:user` scopes.
 
-## PostFiat (bundled)
+## PostFiat Leaderboard (bundled)
+
+Collects: `postfiat/leaderboard`
+
+```bash
+export PF_JWT_TOKEN=your-jwt-token
+pf-scout seed postfiat
+```
+
+Auth: JWT Bearer token from tasknode. Pass via `--jwt` or `PF_JWT_TOKEN` env var.
+
+**API endpoint:** `GET https://tasknode.postfiat.org/api/leaderboard`
+
+**Payload fields:**
+- `wallet_address` — XRPL wallet
+- `summary` — contributor description
+- `capabilities` — list of skills (str or dict)
+- `expert_knowledge` — list of `{domain: str}`
+- `monthly_rewards`, `weekly_rewards` — PFT earned
+- `monthly_tasks` — tasks completed this month
+- `alignment_score`, `alignment_tier` — protocol alignment metrics
+- `sybil_score`, `sybil_risk` — identity verification confidence
+- `leaderboard_score_month`, `leaderboard_score_week` — composite scores
+- `is_published`, `user_id` — account metadata
+
+**Dedup:** Content-addressed via event fingerprint. Re-running is safe — only new/changed data creates new signals.
+
+---
+
+## PostFiat Context (bundled)
 
 Collects: `postfiat/context`
 

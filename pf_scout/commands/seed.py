@@ -9,12 +9,16 @@ import click
 from ..db import get_connection
 from ..fingerprint import compute_event_fingerprint
 from ..collectors.github import GitHubCollector
+from .seed_postfiat import seed_postfiat
 
 
 @click.group("seed")
 def seed_group():
     """Seed contacts from external sources."""
     pass
+
+
+seed_group.add_command(seed_postfiat)
 
 
 @seed_group.command("github")

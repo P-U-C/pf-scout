@@ -23,7 +23,28 @@ pf-scout seed github --org postfiatorg
 ```
 Discovers all org contributors, creates contact records, and collects profile + commit signals.
 
-## 3. View a contact
+## 3. Seed from Post Fiat leaderboard
+```bash
+export PF_JWT_TOKEN=your-jwt-token
+pf-scout seed postfiat
+# Optional filters:
+pf-scout seed postfiat --min-alignment 70 --min-monthly-pft 50000
+```
+Fetches all contributors from the PF leaderboard API, creates contact records, and stores leaderboard signals.
+
+## 4. Generate a prospect pipeline
+```bash
+# Live mode (fetches leaderboard directly, no DB needed)
+pf-scout prospect --jwt $PF_JWT_TOKEN --output prospects.md
+
+# DB mode (uses stored signals from seed postfiat)
+pf-scout prospect --from-db --output prospects.md
+
+# Custom rubric
+pf-scout prospect --rubric rubrics/pf-default.yaml --jwt $PF_JWT_TOKEN --output prospects.md
+```
+
+## 5. View a contact
 ```bash
 pf-scout show github:allenday
 ```

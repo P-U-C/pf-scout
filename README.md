@@ -32,6 +32,16 @@ pf-scout add "Allen Day" --identifier github:allenday
 # Seed from a GitHub org (discovers + collects all contributors)
 pf-scout seed github --org postfiatorg --token $GITHUB_TOKEN
 
+# Seed from Post Fiat leaderboard
+export PF_JWT_TOKEN=your-jwt-token
+pf-scout seed postfiat
+
+# Generate a prospect pipeline (live mode — no DB needed)
+pf-scout prospect --jwt $PF_JWT_TOKEN --output prospects.md
+
+# Generate from stored DB data
+pf-scout prospect --from-db --output prospects.md
+
 # View a contact card
 pf-scout show github:allenday
 
@@ -56,6 +66,8 @@ pf-scout report --rubric rubrics/b1e55ed.yaml --output prospects.md
 | `pf-scout show` | Display contact card |
 | `pf-scout list` | List contacts with optional tier filter |
 | `pf-scout seed github` | Seed contacts from GitHub org |
+| `pf-scout seed postfiat` | Seed contacts from PF leaderboard |
+| `pf-scout prospect` | Generate scored prospect pipeline doc |
 | `pf-scout update` | Re-collect signals + score interactively |
 | `pf-scout report` | Generate markdown/CSV report |
 | `pf-scout doctor` | Diagnostic: DB integrity, env vars, rubric |
