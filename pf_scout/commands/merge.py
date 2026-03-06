@@ -1,6 +1,5 @@
 """pf-scout merge command."""
 
-import json
 from datetime import datetime, timezone
 
 import click
@@ -88,20 +87,20 @@ def merge_cmd(ctx, source_id, target_id, confirm):
         target_summary = get_contact_summary(conn, target["id"])
 
         click.echo("\n┌─ MERGE PREVIEW ─────────────────────────────────┐")
-        click.echo(f"│ SOURCE (will be archived):                      │")
+        click.echo("│ SOURCE (will be archived):                      │")
         click.echo(f"│   Label: {source['canonical_label']:<39}│")
         click.echo(f"│   ID: {source['id']:<42}│")
         click.echo(f"│   Identifiers: {len(source_summary['identifiers']):<33}│")
         click.echo(f"│   Signals: {source_summary['signals_count']:<37}│")
         click.echo(f"│   Notes: {source_summary['notes_count']:<39}│")
-        click.echo(f"├──────────────────────────────────────────────────┤")
-        click.echo(f"│ TARGET (will survive):                          │")
+        click.echo("├──────────────────────────────────────────────────┤")
+        click.echo("│ TARGET (will survive):                          │")
         click.echo(f"│   Label: {target['canonical_label']:<39}│")
         click.echo(f"│   ID: {target['id']:<42}│")
         click.echo(f"│   Identifiers: {len(target_summary['identifiers']):<33}│")
         click.echo(f"│   Signals: {target_summary['signals_count']:<37}│")
         click.echo(f"│   Notes: {target_summary['notes_count']:<39}│")
-        click.echo(f"└──────────────────────────────────────────────────┘")
+        click.echo("└──────────────────────────────────────────────────┘")
 
         # 3. Confirm
         if not confirm:
