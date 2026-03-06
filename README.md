@@ -1,66 +1,85 @@
 # pf-scout
 
-Contact intelligence CLI for Post Fiat contributor recruitment.
+Contact intelligence database for Post Fiat contributor recruitment.
+
+Maintains a **persistent, growing profile** for each contact — every signal run appends data, scores are snapshotted, drift is visible over time.
 
 ## Install
 
 ```bash
+pip install pf-scout
+# or from source:
+git clone https://github.com/P-U-C/pf-scout && cd pf-scout
 pip install -e .
 ```
 
-## Quick Start
+## Quick start
 
 ```bash
-# Initialize database
+# Initialize workspace (creates ~/.pf-scout/, contacts.db, .gitignore)
 pf-scout init
 
 # Add a contact manually
-pf-scout add allenday --identifier github:allenday --identifier wallet:rXXX
+pf-scout add "Allen Day" --identifier github:allenday
 
-# Link two identifiers to the same contact
-pf-scout link github:allenday wallet:rXXX --confidence 0.95
+# Seed from a GitHub org (discovers + collects all contributors)
+pf-scout seed github --org postfiatorg --token $GITHUB_TOKEN
 
 # View a contact card
 pf-scout show github:allenday
-pf-scout show github:allenday --format json
-pf-scout show github:allenday --signals --history
 
-# Seed contacts from a GitHub org
-export GITHUB_TOKEN=ghp_xxx
-pf-scout seed github --org post-fiat-foundation
-
-# Update signals for a contact
-pf-scout update github:allenday
-
-# Update with scoring rubric (interactive)
+# Score a contact against a rubric
 pf-scout update github:allenday --rubric rubrics/b1e55ed.yaml
 
-# Batch update all contacts
-pf-scout update --all --rubric rubrics/b1e55ed.yaml --batch
+# List top-tier contacts
+pf-scout list --tier top --rubric rubrics/b1e55ed.yaml
 
-# Dry run (no writes)
-pf-scout update github:allenday --dry-run
+# Generate a report
+pf-scout report --rubric rubrics/b1e55ed.yaml --output prospects.md
 ```
 
-## Custom DB Path
+## Commands
 
-```bash
-pf-scout --db /path/to/contacts.db init
-# or
-export PF_SCOUT_DB=/path/to/contacts.db
-```
+| Command | Description |
+|---------|-------------|
+| `pf-scout init` | Initialize workspace |
+| `pf-scout add` | Add a contact with identifiers |
+| `pf-scout link` | Link two identifiers to same contact |
+| `pf-scout show` | Display contact card |
+| `pf-scout list` | List contacts with optional tier filter |
+| `pf-scout seed github` | Seed contacts from GitHub org |
+| `pf-scout update` | Re-collect signals + score interactively |
+| `pf-scout report` | Generate markdown/CSV report |
+| `pf-scout doctor` | Diagnostic: DB integrity, env vars, rubric |
+| `pf-scout export` | Export contacts to JSON |
+| `--version` | Show version |
+
+## Rubrics
+
+Rubrics are YAML files defining scoring dimensions. See `rubrics/b1e55ed.yaml` for the b1e55ed producer fit rubric.
+
+## Privacy
+
+- DB is gitignored by default on `pf-scout init`
+- Session cookies and API tokens are **never stored** in the database
+- `pf-scout export --anonymize` strips all identifying fields
 
 ## Architecture
 
-- **SQLite** with WAL mode for concurrent reads
-- **Click** CLI framework
-- **Collectors** — pluggable signal sources (GitHub implemented)
-- **Rubrics** — YAML-based scoring dimensions
-- **Fingerprints** — SHA-256 deduplication for idempotent signal collection
+- SQLite-backed, single file (`~/.pf-scout/contacts.db`)
+- Append-only signal log — no data is ever overwritten
+- Pluggable collectors (GitHub included; PostFiat, Twitter in v2)
+- Manual/assisted scoring in v1; auto-scoring in v2
 
-## Testing
+See [SPEC.md](SPEC.md) for full product specification.
+
+## Development
 
 ```bash
-pip install pytest
-python -m pytest tests/ -q
+pip install -e ".[dev]"
+pytest tests/ -q
 ```
+
+## License
+
+MIT
