@@ -1,0 +1,42 @@
+# .review-council.yml
+# Review council integration for P-U-C/pf-scout
+# Extend-only — cannot disable core reviewers (Correctness + Epistemics)
+
+reviewers:
+  conditional:
+    - reviewer: security
+      when:
+        paths:
+          - "**/collectors/**"
+          - "**/auth*"
+          - "pf_scout/commands/set_context.py"
+        watches:
+          - "pf_scout/db.py"
+
+hard_human_gate:
+  paths:
+    - "pf_scout/db.py"
+    - "pf_scout/schema.py"
+    - "pf_scout/collectors/postfiat.py"
+  label: "review/human-required"
+  block_merge: true
+
+noise_budget:
+  max_findings_per_100_loc: 3
+  max_findings_per_pr: 15
+
+escape_hatch:
+  allowed_humans:
+    - "zozDOTeth"
+
+review_sla_minutes: 10
+
+labels:
+  pending: "review/pending"
+  pass: "review/pass"
+  concern: "review/concern"
+  block: "review/block"
+  human_gate: "review/human-required"
+  override: "review/override"
+
+block_on: "block"

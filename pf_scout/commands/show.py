@@ -1,6 +1,7 @@
 """pf-scout show command."""
 
 import json
+from pathlib import Path
 
 import click
 
@@ -138,6 +139,50 @@ def render_markdown(contact, identifiers, signals, notes):
     return "\n".join(lines)
 
 
+def _render_context_section(conn, contact_id: str, scout_dir: Path, my_keywords: list) -> str:
+    """Render PF Context section for contact card."""
+    row = conn.execute("""
+        SELECT payload, collected_at FROM signals
+        WHERE contact_id = ? AND signal_type = 'postfiat/context'
+        ORDER BY collected_at DESC LIMIT 1
+    """, (contact_id,)).fetchone()
+
+    if not row:
+        return ""
+
+    payload = json.loads(row["payload"])
+    fetched = row["collected_at"][:10]
+    lines = [f"\n── PF CONTEXT (fetched {fetched}) " + "─" * 40]
+
+    if payload.get("auth_required"):
+        lines.append("  ⚠  Context not accessible — run update with PF session cookie")
+    else:
+        raw = payload.get("raw_markdown", "")
+        val = payload.get("section_value", "")
+        strat = payload.get("section_strategy", "")
+        tactics = payload.get("section_tactics", "")
+
+        if val:
+            lines.append(f"  Value:    {val[:90]}")
+        if strat:
+            lines.append(f"  Strategy: {strat[:90]}")
+        if tactics:
+            for t in tactics.split("\n")[:3]:
+                if t.strip():
+                    lines.append(f"  Tactics:  {t.strip()[:90]}")
+
+        if my_keywords:
+            from .rerank import _alignment_notes
+            matches = _alignment_notes(my_keywords, raw)
+            if matches:
+                lines.append(f"\n  Context alignment: {', '.join(matches[:6])}")
+            else:
+                lines.append("\n  Context alignment: no keyword overlap with your context")
+
+    lines.append("─" * 80)
+    return "\n".join(lines)
+
+
 @click.command("show")
 @click.argument("identifier")
 @click.option("--format", "output_format", type=click.Choice(["text", "json", "md"]),
@@ -202,6 +247,17 @@ def show_command(ctx, identifier, output_format, history, show_signals):
                 contact, identifiers_rows, signals_rows, notes_rows,
                 show_history=history, show_signals=show_signals
             ))
+
+        # PF Context section (appended to all formats)
+        scout_dir = Path(db_path).parent
+        context_path = scout_dir / "my-context.md"
+        my_keywords = []
+        if context_path.exists():
+            from .rerank import _load_context_keywords
+            my_keywords = _load_context_keywords(context_path.read_text())
+        context_section = _render_context_section(conn, contact_id, scout_dir, my_keywords)
+        if context_section:
+            click.echo(context_section)
 
     finally:
         conn.close()
