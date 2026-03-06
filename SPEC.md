@@ -238,6 +238,13 @@ This updates both identifiers to point to the same `contact_id` and merges their
 
 **Identity linking v2:** inferred from overlapping signals (same email in PF profile and GitHub, same profile text, etc.) with `link_confidence < 1.0` and a review queue.
 
+**`pf-scout merge` semantics:** When merging contact A into contact B (B survives):
+- All of A's `identifiers` are re-parented to B's `contact_id`
+- All of A's `signals` are re-parented to B's `contact_id` (their `event_fingerprint` is **not** recomputed — fingerprints are immutable write-time artifacts; dedup for the merged contact uses `source_event_id` when available)
+- Contact A is **archived** (not deleted) — `archived = 1`, with a system note: `merged_into: <B contact_id>`
+- A's `snapshots` are retained as-is but marked superseded via a note: `superseded_by: <B contact_id>` — they are not deleted because they represent historically valid scoring state
+- Merge is **not automatically reversible**, but since A is archived and all data is preserved, a manual unmerge is possible by re-activating A and re-parenting identifiers/signals back
+
 ### 4.2 Snapshot-Based Scoring
 
 Scores are never stored on the contact record. Every scoring run creates a new snapshot. This means:
@@ -340,21 +347,26 @@ Token expiry is a known operational pain. v1 documents this explicitly; v2 will 
 
 Each `signal_type` has a defined payload schema. Collectors must conform.
 
-| signal_type | source | source_event_id | payload fields |
-|-------------|--------|-----------------|----------------|
-| `github/commit` | github | commit SHA | `repo`, `message_snippet`, `additions`, `deletions`, `ts` |
-| `github/profile` | github | NULL | `bio`, `company`, `location`, `public_repos`, `followers` |
-| `github/repo_star` | github | `{user}:{repo}` | `repo`, `stars`, `language`, `description_snippet` |
-| `postfiat/capability` | postfiat | NULL | `capabilities: []`, `expert_knowledge: []`, `linked_tickers: []` |
-| `postfiat/task_completion` | postfiat | task ID | `task_id`, `reward_pft`, `category`, `ts` |
-| `postfiat/pft_balance` | postfiat | NULL | `balance`, `snapshot_ts` |
-| `twitter/profile` | twitter | NULL | `followers`, `following`, `bio_snippet`, `verified` |
-| `twitter/post_keyword` | twitter | tweet ID | `keywords_matched: []`, `engagement_score`, `ts` |
-| `discord/message` | discord | message ID | `channel`, `word_count`, `ts` |
-| `discord/channel_active` | discord | NULL | `channels: []`, `message_count`, `period_days` |
-| `manual/score_override` | manual | NULL | `dimension_id`, `score`, `rationale`, `rubric_name` |
-| `manual/note` | manual | NULL | `body`, `privacy_tier` |
-| `manual/profile` | manual | NULL | any fields — free-form enrichment |
+| signal_type | source | source_event_id | payload fields | redaction_fields |
+|-------------|--------|-----------------|----------------|-----------------|
+| `github/commit` | github | commit SHA | `repo`, `message_snippet`, `additions`, `deletions`, `ts` | none |
+| `github/profile` | github | NULL | `bio`, `company`, `location`, `public_repos`, `followers` | `bio`, `company`, `location` |
+| `github/repo_star` | github | `{user}:{repo}` | `repo`, `stars`, `language`, `description_snippet` | none |
+| `postfiat/capability` | postfiat | NULL | `capabilities: []`, `expert_knowledge: []`, `linked_tickers: []` | none (derived only) |
+| `postfiat/task_completion` | postfiat | task ID | `task_id`, `reward_pft`, `category`, `ts` | none |
+| `postfiat/pft_balance` | postfiat | NULL | `balance`, `snapshot_ts` | `balance` |
+| `twitter/profile` | twitter | NULL | `followers`, `following`, `bio_snippet`, `verified` | `bio_snippet` |
+| `twitter/post_keyword` | twitter | tweet ID | `keywords_matched: []`, `engagement_score`, `ts` | none |
+| `discord/message` | discord | message ID | `channel`, `word_count`, `ts` | `channel` |
+| `discord/channel_active` | discord | NULL | `channels: []`, `message_count`, `period_days` | `channels` |
+| `manual/score_override` | manual | NULL | `dimension_id`, `score`, `rationale`, `rubric_name`, `scorer_id` | none |
+| `manual/note` | manual | NULL | `body`, `privacy_tier` | `body` (if privacy_tier=private) |
+| `manual/profile` | manual | NULL | any fields — free-form enrichment | defined per field at entry time |
+
+
+**`redaction_fields`**: Fields stripped in `pf-scout export --anonymize`. Defined per signal type here (not in collector code) so the privacy model is auditable from this registry alone.
+
+**`scorer_id`** on `manual/score_override`: Optional. Set via `PF_SCOUT_SCORER_ID` env var or `--scorer-id` flag. Enables inter-rater analysis when multiple humans score the same contact across different pf-scout instances. Empty string if not set.
 
 ---
 
@@ -378,15 +390,25 @@ pf-scout seed csv --file prospects.csv
 pf-scout update <identifier>                        # re-collect + prompt for scores
 pf-scout update --all --since 7d                    # only if last update >7d ago
 pf-scout update <identifier> --batch                # collect without prompting; marks dims as needs_review
+pf-scout update <identifier> --dry-run              # show what would be collected without writing anything
+pf-scout update --all --dry-run                     # dry-run for all contacts
 pf-scout score <identifier> --rubric rubrics/b1e55ed.yaml  # score without collecting
 
+# update --all partial-success semantics:
+# Each collector runs independently. If collector X fails (e.g. expired session cookie)
+# while collector Y succeeds, Y's signals are committed and X's failure is reported.
+# Exit code is non-zero if any collector failed. Run pf-scout doctor to check credentials.
+
 # Read
-pf-scout show <identifier>                          # contact card
+pf-scout show <identifier> [--format json|md]       # contact card
 pf-scout show <identifier> --history                # include all snapshots
 pf-scout show <identifier> --signals                # include raw signal log
-pf-scout diff <identifier>                          # latest vs previous snapshot
+pf-scout diff <identifier> [--format json|md]       # latest vs previous snapshot
 pf-scout diff <identifier> --since 2026-01-01       # latest vs first snapshot after date
-pf-scout list [--tier top] [--rubric rubrics/b1e55ed.yaml]
+pf-scout list [--tier top] [--rubric rubrics/b1e55ed.yaml] [--format json|md|csv]
+
+# Diagnostics
+pf-scout doctor              # check DB integrity, env vars, rubric validity, schema version
 
 # Annotate
 pf-scout note <identifier> "text"                   # add private note
