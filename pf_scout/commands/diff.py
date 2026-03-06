@@ -1,7 +1,6 @@
 """pf-scout diff command — compare snapshots to show score drift."""
 
 import json
-from datetime import datetime
 
 import click
 
