@@ -2,8 +2,6 @@
 
 import json
 import os
-import sqlite3
-import tempfile
 import uuid
 from datetime import datetime
 from unittest.mock import patch, MagicMock
@@ -162,12 +160,12 @@ class TestSeed:
             with patch('pf_scout.collectors.github.requests.get') as mock_get:
                 # Track calls to handle pagination
                 call_count = {"repos": 0}
-                
+
                 # Setup mock responses
                 def mock_response(url, **kwargs):
                     resp = MagicMock()
                     resp.headers = {}
-                    
+
                     if "/orgs/" in url and "/repos" in url:
                         call_count["repos"] += 1
                         resp.status_code = 200
@@ -195,7 +193,7 @@ class TestSeed:
                         resp.status_code = 404
                         resp.json.return_value = {}
                     return resp
-                
+
                 mock_get.side_effect = mock_response
 
                 result = runner.invoke(cli, [
@@ -204,7 +202,7 @@ class TestSeed:
                     "--org", "test-org",
                     "--token", "fake-token"
                 ])
-                
+
                 assert result.exit_code == 0
                 assert "Seeded" in result.output
 
@@ -218,11 +216,11 @@ class TestSeed:
         with patch('pf_scout.collectors.github.time.sleep'):
             with patch('pf_scout.collectors.github.requests.get') as mock_get:
                 call_count = {"repos": 0}
-                
+
                 def mock_response(url, **kwargs):
                     resp = MagicMock()
                     resp.headers = {}
-                    
+
                     if "/orgs/" in url and "/repos" in url:
                         call_count["repos"] += 1
                         resp.status_code = 200
@@ -239,7 +237,7 @@ class TestSeed:
                         resp.status_code = 404
                         resp.json.return_value = {}
                     return resp
-                
+
                 mock_get.side_effect = mock_response
 
                 result = runner.invoke(cli, [
@@ -248,7 +246,7 @@ class TestSeed:
                     "--org", "test-org",
                     "--token", "fake-token"
                 ])
-                
+
                 assert result.exit_code == 0
 
                 conn = get_connection(initialized_db)

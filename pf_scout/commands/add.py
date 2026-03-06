@@ -1,6 +1,5 @@
 """pf-scout add command."""
 
-import json
 import uuid
 from datetime import datetime
 
@@ -55,15 +54,15 @@ def add_command(ctx, label, identifiers):
         conn.commit()
 
         # Print contact card
-        click.echo(f"┌─────────────────────────────────────────┐")
+        click.echo("┌─────────────────────────────────────────┐")
         click.echo(f"│ Contact: {label:<31}│")
-        click.echo(f"├─────────────────────────────────────────┤")
+        click.echo("├─────────────────────────────────────────┤")
         click.echo(f"│ ID: {contact_id:<36}│")
         click.echo(f"│ First seen: {now:<28}│")
         for platform, value in parsed:
             ident_str = f"{platform}:{value}"
             click.echo(f"│ → {ident_str:<37}│")
-        click.echo(f"└─────────────────────────────────────────┘")
+        click.echo("└─────────────────────────────────────────┘")
 
     except Exception as e:
         conn.rollback()

@@ -1,9 +1,7 @@
 """pf-scout update command."""
 
 import json
-import os
 import sys
-import uuid
 from datetime import datetime, timedelta
 
 import click
@@ -148,13 +146,9 @@ def run_scoring(conn, contact_id, rubric, batch=False):
             click.echo(f"Guide:\n{dim.get('guide', 'No guide available')}")
 
             # Show relevant signals
-            click.echo(f"\nRelevant signals:")
+            click.echo("\nRelevant signals:")
             shown = 0
             for sig in signals[:10]:
-                try:
-                    payload = json.loads(sig["payload"])
-                except (json.JSONDecodeError, TypeError):
-                    payload = {}
                 click.echo(f"  [{sig['signal_type']}] {sig.get('evidence_note', '')}")
                 shown += 1
             if not shown:
@@ -304,7 +298,7 @@ def update_command(ctx, identifier, update_all, since, rubric_path, batch, dry_r
                     click.echo(f"  - {f}", err=True)
                 sys.exit(1)
             else:
-                click.echo(f"\n✓ All contacts updated successfully")
+                click.echo("\n✓ All contacts updated successfully")
 
         elif identifier:
             # Update single contact
