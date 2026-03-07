@@ -155,7 +155,7 @@ def merge_cmd(ctx, source_id, target_id, confirm):
 
         click.echo(f"\n✓ Merged {source['canonical_label']} → {target['canonical_label']}")
         click.echo(f"  Re-parented {len(source_summary['identifiers'])} identifiers and {source_summary['signals_count']} signals")
-        click.echo(f"  Source contact archived")
+        click.echo("  Source contact archived")
 
     finally:
         conn.close()
