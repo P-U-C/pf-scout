@@ -108,10 +108,6 @@ def run_auto_scoring(conn, contact_id, rubric):
     """
     now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    # Get contact info
-    contact = conn.execute(
-        "SELECT * FROM contacts WHERE id = ?", (contact_id,)
-    ).fetchone()
 
     # Get signals for context
     signals = conn.execute(
@@ -265,10 +261,6 @@ def run_scoring(conn, contact_id, rubric, batch=False):
     """
     now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    # Get contact info
-    contact = conn.execute(
-        "SELECT * FROM contacts WHERE id = ?", (contact_id,)
-    ).fetchone()
 
     # Get signals for context
     signals = conn.execute(
