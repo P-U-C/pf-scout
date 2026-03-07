@@ -4,6 +4,7 @@ This module provides reusable scoring functions for evaluating contacts
 against rubric dimensions. Used by prospect, report, and other commands.
 """
 
+
 # ---------------------------------------------------------------------------
 # Default keyword sets for heuristic scoring
 # ---------------------------------------------------------------------------

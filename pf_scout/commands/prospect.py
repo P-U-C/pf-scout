@@ -14,6 +14,7 @@ from ..scoring import (
     DEFAULT_DIMENSIONS,
     QUANT_KEYWORDS,
     TECH_KEYWORDS,
+
     infer_role,
     score_contact,
     score_engagement_consistency,
