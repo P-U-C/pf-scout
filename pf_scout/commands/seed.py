@@ -1,5 +1,6 @@
 """pf-scout seed command."""
 
+import csv
 import json
 import uuid
 from datetime import datetime
@@ -19,6 +20,90 @@ def seed_group():
 
 
 seed_group.add_command(seed_postfiat)
+
+
+@seed_group.command("csv")
+@click.option("--file", "csv_file", required=True, type=click.Path(exists=True),
+              help="Path to CSV file with prospects")
+@click.pass_context
+def seed_csv(ctx, csv_file):
+    """Seed contacts from a CSV file.
+
+    CSV format:
+        label,platform,identifier
+        Alice Smith,github,alicesmith
+        Bob Jones,twitter,bobjones
+    """
+    db_path = ctx.obj["db_path"]
+    conn = get_connection(db_path)
+
+    created_count = 0
+    skipped_count = 0
+
+    try:
+        with open(csv_file, newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            # Validate required columns
+            required_cols = {'label', 'platform', 'identifier'}
+            if not required_cols.issubset(set(reader.fieldnames or [])):
+                raise click.ClickException(
+                    f"CSV must have columns: {', '.join(required_cols)}"
+                )
+
+            for row in reader:
+                label = row['label'].strip()
+                platform = row['platform'].strip().lower()
+                identifier_value = row['identifier'].strip()
+
+                if not all([label, platform, identifier_value]):
+                    click.echo(f"  Skipping empty row: {row}")
+                    skipped_count += 1
+                    continue
+
+                now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                # Check if identifier already exists
+                existing = conn.execute(
+                    "SELECT id, contact_id FROM identifiers "
+                    "WHERE platform = ? AND identifier_value = ?",
+                    (platform, identifier_value)
+                ).fetchone()
+
+                if existing:
+                    click.echo(f"  Skipped (exists): {platform}:{identifier_value}")
+                    skipped_count += 1
+                    continue
+
+                # Create new contact + identifier
+                contact_id = str(uuid.uuid4())
+                ident_id = str(uuid.uuid4())
+
+                conn.execute(
+                    "INSERT INTO contacts "
+                    "(id, canonical_label, first_seen, last_updated) "
+                    "VALUES (?, ?, ?, ?)",
+                    (contact_id, label, now, now)
+                )
+                conn.execute(
+                    "INSERT INTO identifiers "
+                    "(id, contact_id, platform, identifier_value, is_primary, "
+                    "first_seen, last_seen, link_confidence, link_source) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (ident_id, contact_id, platform, identifier_value, 1,
+                     now, now, 1.0, "csv_import")
+                )
+                click.echo(f"  Created: {label} ({platform}:{identifier_value})")
+                created_count += 1
+
+        conn.commit()
+        click.echo(f"\n✓ Seed complete: {created_count} created, {skipped_count} skipped")
+
+    except Exception as e:
+        conn.rollback()
+        raise click.ClickException(str(e))
+    finally:
+        conn.close()
 
 
 @seed_group.command("github")
