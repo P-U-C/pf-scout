@@ -10,6 +10,7 @@ import yaml
 from ..db import get_connection
 from ..fingerprint import compute_event_fingerprint
 from ..collectors.github import GitHubCollector
+from ..scoring import score_contact, TECH_KEYWORDS, QUANT_KEYWORDS, get_matching_keywords
 
 
 def get_collector_for_platform(platform):
@@ -31,6 +32,159 @@ def determine_tier(weighted_score, tiers):
         if weighted_score >= tier["min_score"]:
             return tier["name"]
     return tiers[-1]["name"] if tiers else "D"
+
+
+def build_text_blob_from_signals(signals):
+    """Build a text blob from signals for keyword matching.
+
+    Concatenates evidence notes and payload text from all signals.
+    """
+    parts = []
+    for sig in signals:
+        if sig.get("evidence_note"):
+            parts.append(str(sig["evidence_note"]))
+        if sig.get("payload"):
+            try:
+                payload = json.loads(sig["payload"]) if isinstance(sig["payload"], str) else sig["payload"]
+                # Extract all string values from payload
+                if isinstance(payload, dict):
+                    for v in payload.values():
+                        if isinstance(v, str):
+                            parts.append(v)
+                        elif isinstance(v, list):
+                            for item in v:
+                                if isinstance(item, str):
+                                    parts.append(item)
+                                elif isinstance(item, dict):
+                                    parts.extend(str(val) for val in item.values() if isinstance(val, str))
+            except (json.JSONDecodeError, TypeError):
+                pass
+    return " ".join(parts).lower()
+
+
+def build_row_from_signals(signals):
+    """Build a leaderboard-like row dict from signals for scoring functions.
+
+    This adapts signal data to the format expected by scoring.py functions.
+    """
+    text_blob = build_text_blob_from_signals(signals)
+
+    # Build a minimal row structure that scoring functions can use
+    row = {
+        "summary": text_blob,
+        "capabilities": [],
+        "expert_knowledge": [],
+        # These fields are typically from leaderboard data; default to 0 if not available
+        "sybil_score": 0,
+        "alignment_score": 0,
+        "monthly_rewards": 0,
+        "weekly_rewards": 0,
+        "monthly_tasks": 0,
+        "leaderboard_score_month": 0,
+        "leaderboard_score_week": 0,
+    }
+
+    # Extract any numeric metrics from signals if present
+    for sig in signals:
+        if sig.get("payload"):
+            try:
+                payload = json.loads(sig["payload"]) if isinstance(sig["payload"], str) else sig["payload"]
+                if isinstance(payload, dict):
+                    for key in ["sybil_score", "alignment_score", "monthly_rewards",
+                                "weekly_rewards", "monthly_tasks", "leaderboard_score_month",
+                                "leaderboard_score_week"]:
+                        if key in payload and payload[key]:
+                            row[key] = max(row[key], payload[key])
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+    return row
+
+
+def run_auto_scoring(conn, contact_id, rubric):
+    """Run auto-scoring using heuristics without interactive prompts.
+
+    Returns (weighted_score, tier).
+    """
+    now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
+
+
+    # Get signals for context
+    signals = conn.execute(
+        "SELECT * FROM signals WHERE contact_id = ? ORDER BY collected_at DESC",
+        (contact_id,)
+    ).fetchall()
+
+    dimensions = rubric.get("dimensions", [])
+    tiers = rubric.get("tiers", [])
+    rubric_name = rubric.get("name", "unknown")
+    rubric_version = rubric.get("version", "1.0")
+
+    signal_ids_used = [s["id"] for s in signals]
+
+    # Build row from signals for scoring
+    row = build_row_from_signals(signals)
+    text_blob = build_text_blob_from_signals(signals)
+
+    # Run auto-scoring using score_contact
+    result = score_contact(row, dimensions)
+
+    dimension_scores = {}
+    for dim in dimensions:
+        key = dim["key"]
+        score = result["scores"].get(key, 1)
+
+        # Generate evidence based on dimension type
+        if key == "technical_depth":
+            matched = get_matching_keywords(text_blob, TECH_KEYWORDS, limit=5)
+            evidence = f"Keywords: {', '.join(matched)}" if matched else "No tech keywords found"
+        elif key == "forecasting":
+            matched = get_matching_keywords(text_blob, QUANT_KEYWORDS, limit=5)
+            evidence = f"Keywords: {', '.join(matched)}" if matched else "No quant keywords found"
+        elif key == "operational_reliability":
+            lsm = row.get("leaderboard_score_month", 0)
+            mt = row.get("monthly_tasks", 0)
+            evidence = f"Leaderboard: {lsm}, tasks: {mt}"
+        elif key == "engagement_consistency":
+            wr = row.get("weekly_rewards", 0)
+            lsw = row.get("leaderboard_score_week", 0)
+            evidence = f"Weekly rewards: {wr}, score: {lsw}"
+        else:
+            evidence = "Auto-scored via heuristics"
+
+        dimension_scores[key] = {
+            "score": score,
+            "weight": dim["weight"],
+            "evidence": evidence,
+            "is_manual": False,
+        }
+
+    # Calculate scores
+    total_score = sum(d["score"] for d in dimension_scores.values())
+    weighted_score = sum(
+        d["score"] * d["weight"] for d in dimension_scores.values()
+    )
+
+    # Determine tier
+    tier = determine_tier(weighted_score, tiers)
+
+    # Create snapshot
+    conn.execute(
+        "INSERT INTO snapshots "
+        "(contact_id, snapshot_ts, rubric_name, rubric_version, trigger, "
+        "dimension_scores, total_score, weighted_score, tier, signals_used) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (contact_id, now, rubric_name, rubric_version, "update:auto",
+         json.dumps(dimension_scores, sort_keys=True),
+         total_score, weighted_score, tier,
+         json.dumps(signal_ids_used))
+    )
+
+    conn.commit()
+
+    click.echo(f"✓ Auto-scored: total={total_score:.1f}, weighted={weighted_score:.2f}, tier={tier}")
+
+    return weighted_score, tier
 
 
 def collect_signals_for_contact(conn, contact_id, token=None):
@@ -107,7 +261,7 @@ def run_scoring(conn, contact_id, rubric, batch=False):
     """
     now = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    # Get contact info
+    # Get contact info for display
     contact = conn.execute(
         "SELECT * FROM contacts WHERE id = ?", (contact_id,)
     ).fetchone()
@@ -232,10 +386,11 @@ def run_scoring(conn, contact_id, rubric, batch=False):
 @click.option("--rubric", "rubric_path", default=None, type=click.Path(exists=True),
               help="Path to rubric YAML file")
 @click.option("--batch", is_flag=True, help="Batch mode — no interactive prompts")
+@click.option("--auto", is_flag=True, help="Apply auto-scoring heuristics without prompts")
 @click.option("--dry-run", is_flag=True, help="Show what would happen without writing")
 @click.option("--token", default=None, envvar="GITHUB_TOKEN", help="GitHub API token")
 @click.pass_context
-def update_command(ctx, identifier, update_all, since, rubric_path, batch, dry_run, token):
+def update_command(ctx, identifier, update_all, since, rubric_path, batch, auto, dry_run, token):
     """Update signals for a contact or all contacts."""
     db_path = ctx.obj["db_path"]
     conn = get_connection(db_path)
@@ -281,7 +436,10 @@ def update_command(ctx, identifier, update_all, since, rubric_path, batch, dry_r
                                     failures.append(f"{label}: {err}")
 
                             if rubric:
-                                run_scoring(conn, contact_id, rubric, batch=batch)
+                                if auto:
+                                    run_auto_scoring(conn, contact_id, rubric)
+                                else:
+                                    run_scoring(conn, contact_id, rubric, batch=batch)
 
                         except Exception as e:
                             failures.append(f"{label}: {e}")
@@ -338,7 +496,10 @@ def update_command(ctx, identifier, update_all, since, rubric_path, batch, dry_r
                     click.echo(f"⚠ {err}", err=True)
 
             if rubric:
-                run_scoring(conn, contact_id, rubric, batch=batch)
+                if auto:
+                    run_auto_scoring(conn, contact_id, rubric)
+                else:
+                    run_scoring(conn, contact_id, rubric, batch=batch)
 
             conn.commit()
             click.echo("✓ Update complete")
