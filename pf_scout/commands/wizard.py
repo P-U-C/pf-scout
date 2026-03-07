@@ -440,6 +440,7 @@ def wizard_cmd(ctx, auto_yes):
     click.echo()
     click.echo("  Next steps:")
     click.echo("    pf-scout list                                          # view all contacts")
+    click.echo("    pf-scout export --output backup.json                   # backup your data")
     click.echo("    pf-scout show github:allenday                         # view a contact card")
 
     rubric_flag = f" --rubric {rubric_path}" if rubric_path else ""

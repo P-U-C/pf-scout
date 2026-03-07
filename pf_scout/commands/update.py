@@ -260,37 +260,34 @@ def update_command(ctx, identifier, update_all, since, rubric_path, batch, dry_r
                 params.append(cutoff)
 
             contacts = conn.execute(query, params).fetchall()
-            click.echo(f"Updating {len(contacts)} contacts...")
 
-            for contact in contacts:
-                contact_id = contact["id"]
-                label = contact["canonical_label"]
-                click.echo(f"\n--- {label} ---")
+            if dry_run:
+                click.echo(f"Updating {len(contacts)} contacts (dry-run)...")
+                for contact in contacts:
+                    click.echo(f"  [dry-run] Would re-collect signals for {contact['canonical_label']}")
+            else:
+                with click.progressbar(contacts, label=f"Updating {len(contacts)} contacts", show_pos=True) as bar:
+                    for contact in bar:
+                        contact_id = contact["id"]
+                        label = contact["canonical_label"]
 
-                try:
-                    if dry_run:
-                        click.echo(f"  [dry-run] Would re-collect signals for {label}")
-                        continue
+                        try:
+                            new_count, existing_count, errors = collect_signals_for_contact(
+                                conn, contact_id, token
+                            )
 
-                    new_count, existing_count, errors = collect_signals_for_contact(
-                        conn, contact_id, token
-                    )
-                    click.echo(f"  {new_count} new signals found / {existing_count} already known")
+                            if errors:
+                                for err in errors:
+                                    failures.append(f"{label}: {err}")
 
-                    if errors:
-                        for err in errors:
-                            click.echo(f"  ⚠ {err}", err=True)
-                            failures.append(f"{label}: {err}")
+                            if rubric:
+                                run_scoring(conn, contact_id, rubric, batch=batch)
 
-                    if rubric:
-                        run_scoring(conn, contact_id, rubric, batch=batch)
+                        except Exception as e:
+                            failures.append(f"{label}: {e}")
+                            continue
 
-                except Exception as e:
-                    failures.append(f"{label}: {e}")
-                    click.echo(f"  ✗ Error: {e}", err=True)
-                    continue
-
-            conn.commit()
+                conn.commit()
 
             if failures:
                 click.echo(f"\n⚠ {len(failures)} failures:")

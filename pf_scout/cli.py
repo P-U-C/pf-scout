@@ -15,6 +15,10 @@ from .commands.rerank import rerank_cmd
 from .commands.wizard import wizard_cmd
 from .commands.prospect import prospect_cmd
 from .commands.diff import diff_command
+from .commands.report import report_cmd
+from .commands.list import list_command
+from .commands.export import export_command
+from .commands.note import note_command
 
 DEFAULT_DB = os.path.expanduser("~/.pf-scout/contacts.db")
 
@@ -42,6 +46,10 @@ cli.add_command(rerank_cmd)
 cli.add_command(wizard_cmd)
 cli.add_command(prospect_cmd)
 cli.add_command(diff_command)
+cli.add_command(report_cmd)
+cli.add_command(list_command)
+cli.add_command(export_command)
+cli.add_command(note_command)
 
 
 def main():
