@@ -77,3 +77,22 @@ Read-only — no re-collection. Re-ranks everyone against your current Context.
 ```bash
 pf-scout report --rubric rubrics/b1e55ed.yaml --tier top --output top-prospects.md
 ```
+
+## 8. List your contacts
+
+```bash
+pf-scout list --limit 10
+pf-scout list --tier top
+```
+
+## 9. Export for backup
+
+```bash
+pf-scout export --output backup.json
+```
+
+## 10. Track score changes
+
+```bash
+pf-scout diff github:someuser
+```

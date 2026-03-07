@@ -8,7 +8,7 @@ import click
 from ..db import get_connection
 
 
-def render_text_card(contact, identifiers, signals, notes, show_history=False, show_signals=False):
+def render_text_card(contact, identifiers, signals, notes, show_history=False, show_signals=False, show_notes=False):
     """Render a terminal-friendly contact card with box-drawing characters."""
     label = contact["canonical_label"]
     cid = contact["id"]
@@ -56,13 +56,17 @@ def render_text_card(contact, identifiers, signals, notes, show_history=False, s
         if len(signals) > 20:
             lines.append(f"│ {'  ... and ' + str(len(signals) - 20) + ' more':<{inner - 1}}│")
 
-    # Notes / history section
-    if show_history and notes:
+    # Notes section (show_notes or show_history for backward compat)
+    if (show_notes or show_history) and notes:
         lines.append(f"├{'─' * inner}┤")
         lines.append(f"│ {'Notes (' + str(len(notes)) + ')':<{inner - 1}}│")
         for note in notes[:10]:
-            note_str = f"  [{note['note_ts']}] {note['body'][:30]}"
+            privacy = " 🔒" if note["privacy_tier"] == "private" else ""
+            note_preview = note["body"][:28] if len(note["body"]) > 28 else note["body"]
+            note_str = f"  [{note['note_ts'][:10]}]{privacy} {note_preview}"
             lines.append(f"│ {note_str:<{inner - 1}}│")
+        if len(notes) > 10:
+            lines.append(f"│ {'  ... and ' + str(len(notes) - 10) + ' more':<{inner - 1}}│")
 
     lines.append(f"└{'─' * inner}┘")
     return "\n".join(lines)
@@ -187,10 +191,11 @@ def _render_context_section(conn, contact_id: str, scout_dir: Path, my_keywords:
 @click.argument("identifier")
 @click.option("--format", "output_format", type=click.Choice(["text", "json", "md"]),
               default="text", help="Output format")
-@click.option("--history", is_flag=True, help="Show notes/history")
+@click.option("--history", is_flag=True, help="Show notes/history (alias for --notes)")
+@click.option("--notes", "show_notes", is_flag=True, help="Show notes")
 @click.option("--signals", "show_signals", is_flag=True, help="Show signals")
 @click.pass_context
-def show_command(ctx, identifier, output_format, history, show_signals):
+def show_command(ctx, identifier, output_format, history, show_notes, show_signals):
     """Show a contact card by identifier (platform:value)."""
     db_path = ctx.obj["db_path"]
     conn = get_connection(db_path)
@@ -245,7 +250,7 @@ def show_command(ctx, identifier, output_format, history, show_signals):
         else:
             click.echo(render_text_card(
                 contact, identifiers_rows, signals_rows, notes_rows,
-                show_history=history, show_signals=show_signals
+                show_history=history, show_signals=show_signals, show_notes=show_notes
             ))
 
         # PF Context section (appended to all formats)
