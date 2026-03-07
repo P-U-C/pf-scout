@@ -19,6 +19,8 @@ from .commands.merge import merge_cmd
 from .commands.tag import tag_cmd
 from .commands.archive import archive_cmd
 from .commands.list import list_command
+from .commands.export import export_command
+from .commands.note import note_command
 
 DEFAULT_DB = os.path.expanduser("~/.pf-scout/contacts.db")
 
@@ -50,6 +52,8 @@ cli.add_command(merge_cmd)
 cli.add_command(tag_cmd)
 cli.add_command(archive_cmd)
 cli.add_command(list_command)
+cli.add_command(export_command)
+cli.add_command(note_command)
 
 
 def main():
