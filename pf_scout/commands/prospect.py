@@ -10,10 +10,11 @@ import yaml
 
 from ..db import get_connection
 from ..scoring import (
+    evidence_sentence,
     DEFAULT_DIMENSIONS,
     QUANT_KEYWORDS,
     TECH_KEYWORDS,
-    evidence_sentence,
+
     infer_role,
     score_contact,
     score_engagement_consistency,
