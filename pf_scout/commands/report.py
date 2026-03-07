@@ -17,7 +17,6 @@ from ..rubric import load_rubric, RubricValidationError
 from ..scoring import (
     DEFAULT_DIMENSIONS,
     score_contact,
-    evidence_sentence,
     infer_role,
 )
 
