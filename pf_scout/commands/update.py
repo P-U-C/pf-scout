@@ -41,11 +41,13 @@ def build_text_blob_from_signals(signals):
     """
     parts = []
     for sig in signals:
-        if sig.get("evidence_note"):
-            parts.append(str(sig["evidence_note"]))
-        if sig.get("payload"):
+        # Convert sqlite3.Row to dict if needed for .get() access
+        sig_dict = dict(sig) if hasattr(sig, 'keys') else sig
+        if sig_dict.get("evidence_note"):
+            parts.append(str(sig_dict["evidence_note"]))
+        if sig_dict.get("payload"):
             try:
-                payload = json.loads(sig["payload"]) if isinstance(sig["payload"], str) else sig["payload"]
+                payload = json.loads(sig_dict["payload"]) if isinstance(sig_dict["payload"], str) else sig_dict["payload"]
                 # Extract all string values from payload
                 if isinstance(payload, dict):
                     for v in payload.values():
@@ -86,9 +88,11 @@ def build_row_from_signals(signals):
 
     # Extract any numeric metrics from signals if present
     for sig in signals:
-        if sig.get("payload"):
+        # Convert sqlite3.Row to dict if needed for .get() access
+        sig_dict = dict(sig) if hasattr(sig, 'keys') else sig
+        if sig_dict.get("payload"):
             try:
-                payload = json.loads(sig["payload"]) if isinstance(sig["payload"], str) else sig["payload"]
+                payload = json.loads(sig_dict["payload"]) if isinstance(sig_dict["payload"], str) else sig_dict["payload"]
                 if isinstance(payload, dict):
                     for key in ["sybil_score", "alignment_score", "monthly_rewards",
                                 "weekly_rewards", "monthly_tasks", "leaderboard_score_month",
@@ -303,7 +307,8 @@ def run_scoring(conn, contact_id, rubric, batch=False):
             click.echo("\nRelevant signals:")
             shown = 0
             for sig in signals[:10]:
-                click.echo(f"  [{sig['signal_type']}] {sig.get('evidence_note', '')}")
+                evidence = sig['evidence_note'] if sig['evidence_note'] else ''
+                click.echo(f"  [{sig['signal_type']}] {evidence}")
                 shown += 1
             if not shown:
                 click.echo("  (no signals)")
